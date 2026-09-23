@@ -1,0 +1,138 @@
+{
+ "counts": {
+  "QA": 100,
+  "DILR": 100,
+  "VARC": 100
+ },
+ "stats": {
+  "VARC": {
+   "total": 100,
+   "mcq": 82,
+   "tita": 18,
+   "difficulty": {
+    "Medium": 54,
+    "Hard": 28,
+    "Easy": 18
+   },
+   "topics": {
+    "Reading Comprehension": 64,
+    "Verbal Ability": 36
+   },
+   "subtopics": {
+    "Main idea": 16,
+    "Purpose / analogy": 2,
+    "Application": 3,
+    "Tone / attitude": 4,
+    "Inference": 15,
+    "Detail": 9,
+    "Author's view": 9,
+    "Strengthen / weaken": 4,
+    "Vocabulary in context": 2,
+    "Para summary": 9,
+    "Para jumble": 9,
+    "Odd sentence out": 9,
+    "Para completion": 6,
+    "Sentence placement": 3
+   },
+   "sets": 16
+  },
+  "DILR": {
+   "total": 100,
+   "mcq": 48,
+   "tita": 52,
+   "difficulty": {
+    "Medium": 55,
+    "Easy": 23,
+    "Hard": 22
+   },
+   "topics": {
+    "Arrangements": 10,
+    "Scheduling": 10,
+    "Distribution": 10,
+    "Games & Tournaments": 10,
+    "Networks": 10,
+    "Tables": 10,
+    "Charts": 10,
+    "Caselets": 10,
+    "Venn Diagrams": 10,
+    "Hybrid Sets": 10
+   },
+   "subtopics": {
+    "Linear arrangement": 5,
+    "Circular arrangement": 5,
+    "Day-slot scheduling": 5,
+    "Task dependencies (critical path)": 5,
+    "Numeric distribution": 5,
+    "Selection with conditions": 5,
+    "Round-robin points table": 5,
+    "Knockout bracket": 5,
+    "Shortest paths": 5,
+    "Flow / capacity network": 5,
+    "Table with missing values": 5,
+    "Ratings and scoring rules": 5,
+    "Bar chart": 5,
+    "Pie charts": 5,
+    "Percentage caselet": 5,
+    "Quant-based caselet": 5,
+    "Three-set Venn": 5,
+    "Maxima and minima in Venn": 5,
+    "DI + LR hybrid": 5,
+    "Arrangement + table": 5
+   },
+   "sets": 20
+  },
+  "QA": {
+   "total": 100,
+   "mcq": 66,
+   "tita": 34,
+   "difficulty": {
+    "Easy": 32,
+    "Medium": 48,
+    "Hard": 20
+   },
+   "topics": {
+    "Arithmetic": 38,
+    "Algebra": 33,
+    "Number Systems": 10,
+    "Geometry & Mensuration": 14,
+    "Modern Math": 5
+   },
+   "subtopics": {
+    "Profit, Loss & Discount": 4,
+    "Percentages": 3,
+    "Simple & Compound Interest": 4,
+    "Ratio & Proportion": 5,
+    "Averages": 4,
+    "Mixtures & Alligation": 4,
+    "Time & Work": 6,
+    "Time, Speed & Distance": 8,
+    "Linear Equations": 6,
+    "Inequalities & Modulus": 5,
+    "Quadratic Equations": 6,
+    "Logarithms, Surds & Indices": 6,
+    "Functions & Graphs": 4,
+    "Progressions & Series": 6,
+    "Remainders & Cyclicity": 4,
+    "Factors": 2,
+    "Factorials": 1,
+    "Units Digit": 1,
+    "HCF & LCM": 1,
+    "Divisibility & Counting": 1,
+    "Triangles": 3,
+    "Circles": 4,
+    "Polygons": 1,
+    "Coordinate Geometry": 2,
+    "Quadrilaterals": 1,
+    "Mensuration": 3,
+    "Permutations": 1,
+    "Combinations": 2,
+    "Probability": 2
+   },
+   "sets": 0
+  }
+ },
+ "machine_checked": 300,
+ "unchecked": [],
+ "errors": [],
+ "notes": []
+}
