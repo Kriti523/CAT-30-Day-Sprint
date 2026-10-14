@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { AuthError, User } from '@supabase/supabase-js';
 import { AUTH_KEY, supabase } from './cloud';
+import { PAYWALL } from './config';
 
 export interface Account { id: string; email: string }
 
@@ -15,6 +16,10 @@ interface Auth {
   sendReset: (email: string) => Promise<string | null>;
   setPassword: (password: string) => Promise<string | null>;
   signOut: () => Promise<void>;
+  /** Full access: always true without a paywall; otherwise the account has a verified purchase. */
+  entitled: boolean;
+  /** Checks a Gumroad license key and unlocks this account. Returns an error message, or null when unlocked. */
+  claimLicense: (key: string) => Promise<string | null>;
 }
 
 /** The last signed-in account, so a reload opens straight into it (also offline) without waiting on the network. */
@@ -30,6 +35,15 @@ function lastAccount(): Account | null {
 function remember(a: Account | null) {
   try { if (a) localStorage.setItem(USER_KEY, JSON.stringify(a)); else localStorage.removeItem(USER_KEY); } catch { /* ignore */ }
 }
+const entitledKey = (uid: string) => `cat30-sprint:entitled:${uid}`;
+function cachedEntitlement(uid: string | undefined) {
+  if (!uid) return false;
+  try { return localStorage.getItem(entitledKey(uid)) === '1'; } catch { return false; }
+}
+function cacheEntitlement(uid: string, on: boolean) {
+  try { if (on) localStorage.setItem(entitledKey(uid), '1'); else localStorage.removeItem(entitledKey(uid)); } catch { /* ignore */ }
+}
+
 function hasStoredSession() {
   try { return localStorage.getItem(AUTH_KEY) !== null; } catch { return false; }
 }
@@ -49,6 +63,21 @@ const Ctx = createContext<Auth | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<Account | null>(lastAccount);
   const [recovering, setRecovering] = useState(false);
+  // Remembered per account so a paid user offline keeps full access.
+  const [entitled, setEntitled] = useState(() => cachedEntitlement(lastAccount()?.id));
+
+  useEffect(() => {
+    if (!PAYWALL) return;
+    setEntitled(cachedEntitlement(user?.id));
+    if (!user) return;
+    let live = true;
+    supabase!.from('entitlements').select('user_id').eq('user_id', user.id).maybeSingle().then(({ data, error }) => {
+      if (!live || error) return; // offline: keep the remembered answer
+      cacheEntitlement(user.id, !!data);
+      setEntitled(!!data);
+    });
+    return () => { live = false; };
+  }, [user?.id]);
 
   useEffect(() => {
     if (!supabase) return;
@@ -92,6 +121,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return null;
     },
     // Only this device: other devices stay signed in.
+    entitled: !PAYWALL || (!!user && entitled),
+    claimLicense: async (key) => {
+      const { data, error } = await supabase!.functions.invoke('claim-license', { body: { licenseKey: key } });
+      if (data?.ok) { cacheEntitlement(user!.id, true); setEntitled(true); return null; }
+      const body = error && 'context' in error ? await (error.context as Response).json().catch(() => null) : data;
+      return body?.error ?? 'Couldn’t check the key right now. Check your connection and try again.';
+    },
     signOut: async () => {
       const { error } = await supabase!.auth.signOut({ scope: 'local' });
       // Offline with an expired token, Supabase can give up before clearing the stored session.
@@ -100,7 +136,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(null);
       setRecovering(false);
     },
-  }), [user, recovering]);
+  }), [user, recovering, entitled]);
 
   return <Ctx.Provider value={auth}>{children}</Ctx.Provider>;
 }

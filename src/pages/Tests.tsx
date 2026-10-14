@@ -9,6 +9,8 @@ import { Calculator } from '../components/Calculator';
 import { LineChart } from '../components/charts';
 import { Note, PageHead, Panel, StatusPill, secVar } from '../components/ui';
 import { usePlan } from '../lib/usePlan';
+import { useAuth } from '../lib/auth';
+import { Unlock } from '../components/Unlock';
 import { fmtDate } from '../lib/stats';
 
 export default function Tests() {
@@ -18,6 +20,7 @@ export default function Tests() {
   const nav = useNav();
   const [result, setResult] = useState<TestResult | null>(null);
   const { schedule } = usePlan();
+  const { entitled } = useAuth();
   const firstTest = schedule.find((x) => x.d.blocks.some((b) => b.testSection));
 
   const start = (which: Section | 'FULL') => {
@@ -51,6 +54,7 @@ export default function Tests() {
   };
 
   if (run) return <Runner run={run} setRun={setActiveTest} onFinish={finish} />;
+  if (!entitled) return <div><PageHead title="Sectional tests & in-app mock" /><Unlock what="Sectional tests and mocks" /></div>;
   if (result) return <Result t={result} onClose={() => setResult(null)} />;
 
   const history = state.tests.slice(-12);

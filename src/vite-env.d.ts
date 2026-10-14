@@ -1,6 +1,9 @@
-// Build-time settings (from .env). Both are optional; see .env.example.
+// Build-time settings (from .env). All are optional; see .env.example.
 interface ImportMetaEnv {
   readonly VITE_SUPABASE_URL?: string;
   readonly VITE_SUPABASE_ANON_KEY?: string;
+  readonly VITE_REQUIRE_PURCHASE?: string;
+  readonly VITE_BUY_URL?: string;
+  readonly VITE_SUPPORT_EMAIL?: string;
 }
 interface ImportMeta { readonly env: ImportMetaEnv }

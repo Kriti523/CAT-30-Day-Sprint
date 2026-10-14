@@ -4,7 +4,9 @@ import { useNav } from '../lib/nav';
 import { useStore } from '../lib/store';
 import { aggregate, pct } from '../lib/stats';
 import { SECTIONS, type Section } from '../types';
-import { DiffTag, PageHead, SECTION_NAME, StatusPill, secVar } from '../components/ui';
+import { DiffTag, Note, PageHead, SECTION_NAME, StatusPill, secVar } from '../components/ui';
+import { useAuth } from '../lib/auth';
+import { SAMPLE_IDS } from '../data/sample';
 
 type Status = 'all' | 'new' | 'right' | 'wrong' | 'bookmarked' | 'low' | 'noted';
 
@@ -19,7 +21,8 @@ export default function Bank() {
   const [status, setStatus] = useState<Status>('all');
   const [randN, setRandN] = useState(10);
 
-  const inSection = useMemo(() => QUESTIONS.filter((q) => q.section === section), [section]);
+  const { entitled } = useAuth();
+  const inSection = useMemo(() => QUESTIONS.filter((q) => q.section === section && (entitled || SAMPLE_IDS.has(q.id))), [section, entitled]);
   const subs = useMemo(() => [...new Set(inSection.map((q) => q.subtopic))], [inSection]);
 
   const list = useMemo(() => {
@@ -54,6 +57,9 @@ export default function Bank() {
         Every question has a hint, a step-by-step solution, a fast method, the common trap and a one-line revision note. Search, filter, then practise the filtered list or a random draw from it.
       </PageHead>
 
+      {!entitled && (
+        <div className="mb-4"><Note>Free sample: {SAMPLE_IDS.size} of {QUESTIONS.length} questions. <button className="font-semibold underline underline-offset-2" onClick={() => nav.go('unlock')}>Unlock all {QUESTIONS.length}</button></Note></div>
+      )}
       <div className="mb-4 flex flex-wrap gap-2" role="tablist" aria-label="Section">
         {SECTIONS.map((s) => (
           <button key={s} role="tab" aria-selected={section === s} className="btn" onClick={() => { setSection(s); setSub(''); }}
@@ -64,7 +70,7 @@ export default function Bank() {
       </div>
 
       <div className="panel mb-4 p-4">
-        <div className="mb-3 text-sm text-muted">{SECTION_NAME[section]} · <span className="num">{agg.attempted}</span>/100 attempted · accuracy {pct(agg.accuracy)}</div>
+        <div className="mb-3 text-sm text-muted">{SECTION_NAME[section]} · <span className="num">{agg.attempted}</span>/{inSection.length} attempted · accuracy {pct(agg.accuracy)}</div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
           <label className="grid gap-1 lg:col-span-2"><span className="label">Search</span>
             <input id="bank-search" className="field" type="search" placeholder="Words, topic or ID (e.g. remainder, Q045, circular)" value={query} onChange={(e) => setQuery(e.target.value)} />
@@ -99,7 +105,7 @@ export default function Bank() {
             <input id="rand-n" type="number" min={1} max={50} className="field num" style={{ width: '4.5rem' }} value={randN} onChange={(e) => setRandN(Math.max(1, Math.min(50, Number(e.target.value) || 1)))} />
           </label>
           <button className="btn" disabled={!ids.length} onClick={() => nav.startSession(shuffle(ids).slice(0, randN), `Random ${Math.min(randN, ids.length)} · ${title}`, true)}>Start random (timed)</button>
-          <button className="btn btn-ghost" onClick={() => nav.startSession(shuffle(QUESTIONS.map((q) => q.id)).slice(0, randN), `Random ${randN} · all sections`, true)}>Random across all sections</button>
+          <button className="btn btn-ghost" onClick={() => nav.startSession(shuffle(QUESTIONS.filter((q) => entitled || SAMPLE_IDS.has(q.id)).map((q) => q.id)).slice(0, randN), `Random ${randN} · all sections`, true)}>Random across all sections</button>
         </div>
       </div>
 

@@ -22,6 +22,10 @@ import SourcesPage from './pages/Sources';
 import DataPage from './pages/Data';
 import AccountPage from './pages/Account';
 import Setup from './pages/Setup';
+import Legal from './pages/Legal';
+import { Unlock } from './components/Unlock';
+import { SAMPLE_IDS } from './data/sample';
+import { PAYWALL, SUPPORT_EMAIL, BUY_URL } from './lib/config';
 
 const NAV: { page: Page; label: string; group: string }[] = [
   { page: 'dashboard', label: 'Dashboard', group: 'Prepare' },
@@ -37,7 +41,7 @@ const NAV: { page: Page; label: string; group: string }[] = [
   { page: 'sources', label: 'Sources', group: 'Understand' },
   { page: 'data', label: 'Your data', group: 'Understand' },
 ];
-const PAGES = new Set<string>([...NAV.map((n) => n.page), 'practice', 'account']);
+const PAGES = new Set<string>([...NAV.map((n) => n.page), 'practice', 'account', 'unlock', 'privacy', 'terms', 'refunds']);
 
 const SYNC_LABEL: Record<SyncStatus, string> = {
   local: '', loading: 'Loading…', saving: 'Saving…', saved: 'Saved', offline: 'Offline', failed: 'Not loaded',
@@ -107,10 +111,12 @@ export default function App() {
   }, []);
 
   const startSession = useCallback((ids: string[], title: string, timed = false) => {
-    if (!ids.length) return;
-    setPractice({ ids, title, timed, index: 0, startedAt: Date.now() });
+    // The free sample practises only its own questions.
+    const allowed = auth.entitled ? ids : ids.filter((id) => SAMPLE_IDS.has(id));
+    if (!allowed.length) { if (ids.length) go('unlock'); return; }
+    setPractice({ ids: allowed, title, timed, index: 0, startedAt: Date.now() });
     go('practice');
-  }, [go, setPractice]);
+  }, [go, setPractice, auth.entitled]);
 
   useEffect(() => {
     const onNav = () => { const h = window.location.hash.replace('#', ''); if (PAGES.has(h)) setPage(h as Page); };
@@ -137,8 +143,11 @@ export default function App() {
           </button>
           <span className="display text-lg font-bold">CAT Sprint</span>
           <span className={`ml-auto text-xs text-muted ${auth.enabled ? 'hidden md:inline' : ''}`}>30 days · 300 questions</span>
+          {PAYWALL && !auth.entitled && (
+            <button className="chip ml-auto md:ml-0" style={{ color: 'var(--accent)', borderColor: 'var(--accent)' }} onClick={() => go('unlock')}>Free sample</button>
+          )}
           {auth.enabled && (
-            <button className="btn btn-sm ml-auto md:ml-0" onClick={() => go('account')} aria-current={page === 'account' ? 'page' : undefined}
+            <button className={`btn btn-sm ${PAYWALL && !auth.entitled ? '' : 'ml-auto md:ml-0'}`} onClick={() => go('account')} aria-current={page === 'account' ? 'page' : undefined}
               aria-label={auth.user ? `Account: ${auth.user.email}, ${SYNC_LABEL[sync].toLowerCase()}` : undefined}>
               {auth.user ? (
                 <>
@@ -196,7 +205,7 @@ export default function App() {
                     <button className="btn" onClick={() => void signOut()}>Sign out</button>
                   </div>
                 </div>
-              ) : !state.setupDone && page !== 'account' ? (
+              ) : !state.setupDone && !['account', 'privacy', 'terms', 'refunds'].includes(page) ? (
                 <Setup />
               ) : (
                 <>
@@ -215,8 +224,17 @@ export default function App() {
                   {page === 'sources' && <SourcesPage />}
                   {page === 'data' && <DataPage />}
                   {page === 'account' && <AccountPage />}
+                  {page === 'unlock' && <Unlock what="That part of the app" />}
+                  {(page === 'privacy' || page === 'terms' || page === 'refunds') && <Legal which={page} />}
                 </>
               )}
+              <footer className="no-print mt-12 flex flex-wrap gap-x-4 gap-y-1 border-t pt-4 text-xs text-muted" style={{ borderColor: 'var(--line)' }}>
+                <span>Not affiliated with the IIMs or the Common Admission Test (CAT).</span>
+                <button className="underline-offset-2 hover:underline" onClick={() => go('privacy')}>Privacy</button>
+                <button className="underline-offset-2 hover:underline" onClick={() => go('terms')}>Terms</button>
+                <button className="underline-offset-2 hover:underline" onClick={() => go('refunds')}>Refunds</button>
+                {SUPPORT_EMAIL ? <span>Support: <span className="select-all">{SUPPORT_EMAIL}</span></span> : BUY_URL ? <a href={BUY_URL} target="_blank" rel="noreferrer">Support</a> : null}
+              </footer>
             </main>
           </div>
         </div>

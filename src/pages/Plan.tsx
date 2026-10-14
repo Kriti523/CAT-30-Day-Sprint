@@ -6,6 +6,8 @@ import { isDayDone, usePlan } from '../lib/usePlan';
 import { toISODate } from '../lib/dates';
 import { PlanDayCard } from '../components/PlanDay';
 import { Note, PageHead } from '../components/ui';
+import { Unlock } from '../components/Unlock';
+import { useAuth } from '../lib/auth';
 
 const WEEK_TINT = ['var(--seq-1)', 'var(--seq-2)', 'var(--seq-3)', 'var(--seq-4)'];
 const EXTRA_TINT = 'var(--line)';
@@ -18,6 +20,8 @@ export default function PlanPage() {
   const total = schedule.length;
   const extra = total - included;
   const selected = schedule[Math.min(sel, total) - 1];
+  const { entitled } = useAuth();
+  if (!entitled) return <div><PageHead title={total ? `Your ${total}-day plan` : 'Your study plan'} /><Unlock what="Your study plan" /></div>;
 
   const status = (s: (typeof schedule)[number]) => {
     const d = s.d;

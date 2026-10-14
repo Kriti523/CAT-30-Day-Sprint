@@ -6,6 +6,7 @@ import { buildSection, scoreSection, marksFor } from '../src/lib/tests';
 import { emptyState } from '../src/lib/store';
 import { SECTIONS } from '../src/types';
 import { buildSchedule } from '../src/lib/schedule';
+import { claimLicense, type ClaimDeps } from '../supabase/functions/claim-license/claim';
 
 let pass = 0; const fails: string[] = [];
 const ok = (c: boolean, m: string) => { if (c) pass++; else fails.push(m); };
@@ -84,6 +85,27 @@ ok(new Set(RANKED.map((t) => t.cls)).size === 4, 'all four classes used');
     ok(sch.length === 29 - start && new Set(ids).size === ids.length, `start 11-${start}: one entry per day, no repeats`);
   }
 }
-console.log(`logic tests: ${pass} passed, ${fails.length} failed`);
-if (fails.length) { 
-console.log(fails.slice(0, 30).join('\n')); process.exit(1); }
+// License claims (the claim-license function's logic, with a fake Gumroad and database)
+async function licenseTests() {
+  const owners = new Map<string, string>();
+  const gumroad: Record<string, { refunded?: boolean; chargebacked?: boolean }> = { GOOD: {}, REFUNDED: { refunded: true }, CHARGEBACK: { chargebacked: true } };
+  const deps: ClaimDeps = {
+    verify: async (k) => (gumroad[k] ? { success: true, purchase: { email: 'buyer@example.com', ...gumroad[k] } } : { success: false, message: 'not found' }),
+    ownerOf: async (k) => owners.get(k) ?? null,
+    grant: async (u, k) => { if (owners.has(k) && owners.get(k) !== u) throw new Error('unique'); owners.set(k, u); },
+  };
+  const fail = (r: { ok: boolean }) => !r.ok;
+  ok(fail(await claimLicense('u1', '  ', deps)), 'empty license key is rejected');
+  ok(fail(await claimLicense('u1', 'NOPE', deps)), 'unknown license key is rejected');
+  ok(fail(await claimLicense('u1', 'REFUNDED', deps)) && fail(await claimLicense('u1', 'CHARGEBACK', deps)), 'refunded or charged-back purchases are rejected');
+  ok((await claimLicense('u1', ' GOOD ', deps)).ok && owners.get('GOOD') === 'u1', 'a valid key unlocks the account (whitespace trimmed)');
+  ok((await claimLicense('u1', 'GOOD', deps)).ok, 'claiming your own key again is fine');
+  ok(fail(await claimLicense('u2', 'GOOD', deps)), 'one key unlocks only one account');
+  const racing: ClaimDeps = { ...deps, ownerOf: async () => null, grant: async () => { throw new Error('unique'); } };
+  ok(fail(await claimLicense('u3', 'GOOD', racing)), 'a key taken by another account meanwhile is rejected');
+}
+
+licenseTests().then(() => {
+  console.log(`logic tests: ${pass} passed, ${fails.length} failed`);
+  if (fails.length) { console.log(fails.slice(0, 30).join('\n')); process.exit(1); }
+});

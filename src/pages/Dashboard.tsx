@@ -6,6 +6,7 @@ import { useNav } from '../lib/nav';
 import { reattemptQueue, useStore } from '../lib/store';
 import { aggregate, bySubtopic, daysUntil, fmtDate, pct } from '../lib/stats';
 import { usePlan } from '../lib/usePlan';
+import { useAuth } from '../lib/auth';
 import { SECTIONS } from '../types';
 import { PlanDayCard } from '../components/PlanDay';
 import { Meter, PageHead, Panel, SECTION_NAME, secVar } from '../components/ui';
@@ -16,6 +17,7 @@ export default function Dashboard() {
   const { go, startSession } = useNav();
   const [mSec, setMSec] = useState<(typeof SECTIONS)[number]>('QA');
   const plan = usePlan();
+  const { entitled } = useAuth();
   const totalDays = plan.schedule.length;
   // Before the plan starts show its first day, after it ends its last.
   const today = plan.today ?? (plan.phase === 'before' ? plan.schedule[0] : plan.schedule[totalDays - 1]);
@@ -68,7 +70,12 @@ export default function Dashboard() {
       <div className="order-1 grid gap-4 md:order-2 lg:grid-cols-[1.6fr_1fr]">
         <div>
           <div className="label mb-2">{plan.phase === 'during' ? 'Today' : plan.phase === 'before' ? 'Day 1 preview' : 'Final day'}</div>
-          {today ? <PlanDayCard s={today} total={totalDays} compact /> : <p className="panel p-4 text-muted">Your plan has ended. Good luck in the exam.</p>}
+          {!entitled ? (
+            <Panel title={`Your ${totalDays}-day plan is ready`}>
+              <p className="text-muted">Every day, what to study and which questions to solve, fitted to the days you have before CAT. It’s part of full access; the free sample has 20 questions to try.</p>
+              <div className="mt-3 flex flex-wrap gap-2"><button className="btn btn-primary" onClick={() => go('unlock')}>See full access</button><button className="btn" onClick={() => go('bank')}>Try the sample</button></div>
+            </Panel>
+          ) : today ? <PlanDayCard s={today} total={totalDays} compact /> : <p className="panel p-4 text-muted">Your plan has ended. Good luck in the exam.</p>}
         </div>
         <div className="grid content-start gap-4">
           <Panel title="Needs attention">

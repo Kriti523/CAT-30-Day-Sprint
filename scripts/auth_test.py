@@ -15,6 +15,15 @@ SB = 'https://cat-test.supabase.co'
 subprocess.run(['node', 'scripts/build-offline.mjs'], cwd=ROOT, check=True, stdout=subprocess.DEVNULL,
                env={**os.environ, 'VITE_SUPABASE_URL': SB, 'VITE_SUPABASE_ANON_KEY': 'test-anon-key', 'OUT_DIR': OUT})
 URL = 'file://' + os.path.join(OUT, 'index.html')
+# A second build with paid access switched on.
+OUT_PAID = os.path.join(ROOT, 'dist', 'auth-test-paid')
+BUY = 'https://example.gumroad.com/l/cat-sprint'
+subprocess.run(['node', 'scripts/build-offline.mjs'], cwd=ROOT, check=True, stdout=subprocess.DEVNULL,
+               env={**os.environ, 'VITE_SUPABASE_URL': SB, 'VITE_SUPABASE_ANON_KEY': 'test-anon-key', 'OUT_DIR': OUT_PAID,
+                    'VITE_REQUIRE_PURCHASE': 'true', 'VITE_BUY_URL': BUY})
+PAID_URL = 'file://' + os.path.join(OUT_PAID, 'index.html')
+SAMPLE = {'Q001', 'Q012', 'Q021', 'Q027', 'Q039', 'Q050', 'Q072', 'Q082', 'V001', 'V002', 'V003', 'V004', 'V065', 'V075', 'V084',
+          'D061', 'D062', 'D063', 'D064', 'D065'}
 
 results, errors = [], []
 def check(cond, msg):
@@ -29,6 +38,8 @@ class FakeSupabase:
         self.rows = {}        # user_id -> {'state', 'version', 'edited_at'}
         self.rest_down = False
         self.confirm = False  # sign-ups must confirm their email first
+        self.entitlements = {}  # user_id -> license key
+        self.licenses = {'GOOD-KEY': {}, 'REFUNDED-KEY': {'refunded': True}}  # what Gumroad knows
 
     @staticmethod
     def jwt(uid, email):
@@ -86,6 +97,24 @@ class FakeSupabase:
             return reply(200, self.user(me))
         if path in ('/auth/v1/logout', '/auth/v1/recover'):
             return reply(204 if path.endswith('logout') else 200, None if path.endswith('logout') else {})
+        if path == '/rest/v1/entitlements' and req.method == 'GET':
+            uid = self.users[me]['id'] if me else None
+            want = (q.get('user_id', ['eq.'])[0])[3:]
+            return reply(200, [{'user_id': uid}] if uid and want == uid and uid in self.entitlements else [])
+        if path == '/functions/v1/claim-license':
+            if not me:
+                return reply(401, {'ok': False, 'error': 'Sign in first, then enter your license key.'})
+            uid, key = self.users[me]['id'], str(body.get('licenseKey', '')).strip()
+            owner = next((u for u, k in self.entitlements.items() if k == key), None)
+            if owner and owner != uid:
+                return reply(400, {'ok': False, 'error': 'This license key is already linked to another account.'})
+            lic = self.licenses.get(key)
+            if lic is None:
+                return reply(400, {'ok': False, 'error': 'That license key wasn’t recognised.'})
+            if lic.get('refunded'):
+                return reply(400, {'ok': False, 'error': 'This purchase was refunded or disputed, so it no longer unlocks the app.'})
+            self.entitlements[uid] = key
+            return reply(200, {'ok': True})
         if path == '/rest/v1/progress':
             if self.rest_down:
                 return reply(500, {'code': 'XX000', 'message': 'server error'})
@@ -257,6 +286,44 @@ with sync_playwright() as p:
     E.fill('#auth-email', EMAIL); E.fill('#auth-password', 'whatever1'); E.get_by_role('button', name='Create account').click()
     E.wait_for_selector('text=An account with this email already exists')
     check(True, 'sign-up with an existing email says to sign in instead')
+
+    # --- Paid access: the app is a free sample until a license key is verified
+    sb.confirm = False
+    ctxP, P = device(b)
+    P.goto(PAID_URL); P.get_by_role('button', name='Build my plan').click(); P.wait_for_selector('text=Your CAT sprint')
+    check(P.get_by_role('button', name='Free sample').count() == 1 and P.locator('text=/Your \\d+-day plan is ready/').count() == 1,
+          'unpaid: dashboard offers full access instead of the plan')
+    P.get_by_role('button', name='Question bank').first.click(); P.get_by_role('tab', name=re.compile('QA')).click()
+    check(P.locator('ul.panel > li').count() == 8, 'unpaid: the bank shows the 8 sample QA questions')
+    P.get_by_role('button', name='Random across all sections').click(); P.wait_for_timeout(300)
+    ids = P.locator('[aria-label="Questions in this session"] button').all_inner_texts()
+    check(len(ids) == 10 and all(i in SAMPLE for i in ids), f'unpaid: random practice draws 10 sample questions ({len(ids)})')
+    P.get_by_role('button', name='Sectional tests').first.click()
+    check(P.locator('text=Sectional tests and mocks are part of full access').count() == 1 and P.locator('text=Start 40-min test').count() == 0,
+          'unpaid: tests are locked')
+    check(P.get_by_role('link', name='Buy full access').get_attribute('href') == BUY, 'unlock panel links to the Gumroad page')
+    P.get_by_role('button', name='Already bought? Sign in').click()
+    P.get_by_role('button', name='Create an account').click()
+    P.fill('#auth-email', 'buyer@example.com'); P.fill('#auth-password', 'secret123'); P.get_by_role('button', name='Create account').click()
+    wait_saved(P)
+    P.get_by_role('button', name='Sectional tests').first.click()
+    for key, msg in [('WRONG', 'recognised'), ('REFUNDED-KEY', 'refunded or disputed')]:
+        P.fill('#license-key', key); P.get_by_role('button', name='Unlock', exact=True).click()
+        P.wait_for_selector(f'text=/{msg}/'); check(True, f'license key {key} is refused')
+    P.fill('#license-key', 'GOOD-KEY'); P.get_by_role('button', name='Unlock', exact=True).click()
+    P.wait_for_selector('text=Start 120-min mock')
+    check(P.get_by_role('button', name='Free sample').count() == 0, 'a valid key unlocks the tests and removes the sample badge')
+    P.get_by_role('button', name='Question bank').first.click(); P.get_by_role('tab', name=re.compile('QA')).click()
+    check(P.locator('ul.panel > li').count() == 100, 'unlocked: the bank shows all 100 QA questions')
+    P.reload(); P.wait_for_selector('text=Question bank'); P.wait_for_timeout(800)
+    check(P.get_by_role('button', name='Free sample').count() == 0, 'access is kept after a reload')
+    ctxQ, Q = device(b)
+    Q.goto(PAID_URL + '#account'); Q.get_by_role('button', name='Create an account').click()
+    Q.fill('#auth-email', 'friend@example.com'); Q.fill('#auth-password', 'secret123'); Q.get_by_role('button', name='Create account').click()
+    wait_saved(Q)
+    Q.get_by_role('button', name=re.compile('^Account:')).click()
+    Q.fill('#license-key', 'GOOD-KEY'); Q.get_by_role('button', name='Unlock', exact=True).click()
+    Q.wait_for_selector('text=/already linked to another account/'); check(True, 'one key unlocks only one account')
     b.close()
 
 check(not errors, f'no page errors ({errors[:3]})')

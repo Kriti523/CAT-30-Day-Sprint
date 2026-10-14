@@ -1,7 +1,7 @@
 import { createContext, useContext } from 'react';
 import type { Section } from '../types';
 
-export type Page = 'dashboard' | 'plan' | 'bank' | 'practice' | 'tests' | 'errors' | 'trends' | 'priorities' | 'formulas' | 'mocks' | 'strategy' | 'sources' | 'data' | 'account';
+export type Page = 'dashboard' | 'plan' | 'bank' | 'practice' | 'tests' | 'errors' | 'trends' | 'priorities' | 'formulas' | 'mocks' | 'strategy' | 'sources' | 'data' | 'account' | 'unlock' | 'privacy' | 'terms' | 'refunds';
 
 
 export interface Nav {

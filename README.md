@@ -234,6 +234,22 @@ Out of the box the app needs no server: progress is saved in the browser. Connec
 - **Sign out** affects only that device.
 - `python3 scripts/auth_test.py` tests sign-up, sign-in, two-device sync, offline edits and password reset against a fake Supabase, so no real project is needed.
 
+### Paid access (optional)
+
+With accounts set up, you can make the full app require a purchase. Until a Gumroad license key is verified, people get a free sample: 20 questions from all three sections, plus the formula sheets, strategy and paper trends.
+
+1. In Gumroad, turn on **Generate a unique license key per sale** for the product, and note its product ID.
+2. Run the updated [`supabase/schema.sql`](supabase/schema.sql) (it adds the `entitlements` table).
+3. Deploy the function and give it the product ID, with the [Supabase CLI](https://supabase.com/docs/guides/functions):
+   `supabase functions deploy claim-license` and `supabase secrets set GUMROAD_PRODUCT_ID=...`
+4. Set `VITE_REQUIRE_PURCHASE=true` and `VITE_BUY_URL` (your Gumroad page) in `.env.local`, and optionally `VITE_SUPPORT_EMAIL`. Rebuild.
+
+Buyers sign in, enter the key from their receipt, and the account is unlocked on every device. One key unlocks one account; refunded or charged-back purchases are refused.
+
+### Legal pages
+
+Privacy, Terms and Refunds pages are linked from every page's footer, with a "not affiliated with the IIMs" line. They are plain-language drafts based on a 7-day refund policy: **review them, and have them checked, before you sell.**
+
 ---
 
 ## 🛠️ Tech Stack

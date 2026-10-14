@@ -4,6 +4,8 @@ import { useNav } from '../lib/nav';
 import { useStore } from '../lib/store';
 import type { SyncStatus } from '../lib/sync';
 import { PageHead, Panel, Note } from '../components/ui';
+import { LicenseForm } from '../components/Unlock';
+import { PAYWALL } from '../lib/config';
 
 type Mode = 'signin' | 'signup' | 'reset';
 
@@ -31,6 +33,7 @@ export default function AccountPage() {
 
 function SignedIn({ email, notice }: { email: string; notice: string }) {
   const { sync, signOut } = useStore();
+  const { entitled } = useAuth();
   const [busy, setBusy] = useState(false);
   const [color, text] = STATUS[sync] ?? ['var(--faint)', ''];
   return (
@@ -45,6 +48,11 @@ function SignedIn({ email, notice }: { email: string; notice: string }) {
         {sync === 'offline' && <div className="mt-3"><Note tone="warn">If you sign out now, unsaved changes stay on this device and upload the next time you sign in here.</Note></div>}
         <button className="btn mt-4" disabled={busy} onClick={async () => { setBusy(true); await signOut(); }}>{busy ? 'Signing out…' : 'Sign out'}</button>
       </Panel>
+      {PAYWALL && (
+        <Panel className="mt-4 max-w-lg" title="Full access">
+          {entitled ? <p className="flex items-center gap-2"><span className="dot" style={{ background: 'var(--good)' }} aria-hidden />Unlocked on this account.</p> : <LicenseForm />}
+        </Panel>
+      )}
     </div>
   );
 }

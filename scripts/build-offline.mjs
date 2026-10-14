@@ -30,6 +30,9 @@ const common = {
     'process.env.NODE_ENV': '"production"',
     'import.meta.env.VITE_SUPABASE_URL': env('VITE_SUPABASE_URL'),
     'import.meta.env.VITE_SUPABASE_ANON_KEY': env('VITE_SUPABASE_ANON_KEY'),
+    'import.meta.env.VITE_REQUIRE_PURCHASE': env('VITE_REQUIRE_PURCHASE'),
+    'import.meta.env.VITE_BUY_URL': env('VITE_BUY_URL'),
+    'import.meta.env.VITE_SUPPORT_EMAIL': env('VITE_SUPPORT_EMAIL'),
   },
 };
 
