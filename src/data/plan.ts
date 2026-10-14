@@ -1,7 +1,8 @@
 import type { Section } from '../types';
 
 export type Mode = 'Timed' | 'Untimed' | 'Review' | 'Mock' | 'Learn';
-export interface Block { min: number; section: Section | 'All'; title: string; detail: string; mode: Mode; refs?: string[]; testSection?: Section | 'FULL' }
+/** `action` starts a session from the user's own data: the reattempt queue, or random questions they haven't tried. */
+export interface Block { min: number; section: Section | 'All'; title: string; detail: string; mode: Mode; refs?: string[]; testSection?: Section | 'FULL'; action?: 'reattempt' | 'random' }
 export interface PlanDay {
   day: number; week: 1 | 2 | 3 | 4; kind: 'Weekday' | 'Saturday' | 'Sunday'; minutes: number;
   focus: string; blocks: Block[]; accuracy: string; time: string; revision: string;
@@ -12,11 +13,12 @@ export const PHASES = [
   { week: 1, name: 'Diagnosis & fundamentals', days: '1–7', goal: 'Find your baseline in all three sections, repair arithmetic foundations and start an error log.' },
   { week: 2, name: 'High-weightage topics', days: '8–14', goal: 'Cover algebra, geometry, number systems and the core DILR set types; first sectional-level timing.' },
   { week: 3, name: 'Sectional practice & selection', days: '15–21', goal: 'Timed 40-minute sectionals, DILR set selection, hard-question triage, second full mock.' },
-  { week: 4, name: 'Mocks, revision & exam strategy', days: '22–30', goal: 'Full mocks with analysis, reattempt queue, fixed exam-day plan. No new topics after Day 27.' },
+  { week: 4, name: 'Mocks, revision & exam strategy', days: '22–30', goal: 'Full mocks with analysis, reattempt queue, fixed exam-day plan. No new topics in the final days.' },
 ];
 
 /* Weekday = 120 min, Saturday = 240, Sunday = 300, busy-day fallback = 45.
- * Day 1 is a Monday; refs point at question ranges or DILR set ids in this app. */
+ * Days are numbered as written for a Monday start; src/lib/schedule.ts lays them over the real calendar.
+ * refs point at question ranges or DILR set ids in this app. */
 export const PLAN: PlanDay[] = [
   // ------------------------------------------------------------ WEEK 1
   { day: 1, week: 1, kind: 'Weekday', minutes: 120, focus: 'QA diagnostic + percentages',
@@ -58,7 +60,7 @@ export const PLAN: PlanDay[] = [
       { min: 10, section: 'All', mode: 'Review', title: 'Confidence ratings', detail: 'Rate confidence on each question; low ratings go to the reattempt queue.' },
     ],
     accuracy: '≥ 70%', time: '≤ 2.5 min average',
-    revision: 'Revise the Day 1 error-log entries.',
+    revision: 'Revise your first error-log entries.',
     fallback: 'Q008–Q011 (interest) untimed.', fallbackRefs: ['Q008-Q011'] },
   { day: 5, week: 1, kind: 'Weekday', minutes: 120, focus: 'Arithmetic II – ratio, averages, mixtures',
     blocks: [
@@ -68,7 +70,7 @@ export const PLAN: PlanDay[] = [
       { min: 10, section: 'VARC', mode: 'Untimed', title: 'One para summary', detail: 'Warm-up for the weekend.', refs: ['V066'] },
     ],
     accuracy: '≥ 70%', time: '≤ 2.5 min average',
-    revision: 'Reattempt queue: anything wrong from Day 4.',
+    revision: 'Reattempt queue: anything wrong from the percentages day.',
     fallback: 'Q017–Q024 (averages & mixtures) untimed.', fallbackRefs: ['Q017-Q024'] },
   { day: 6, week: 1, kind: 'Saturday', minutes: 240, focus: 'Full diagnostic mock + analysis',
     blocks: [

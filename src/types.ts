@@ -117,4 +117,6 @@ export interface AppState {
   activeTest: RunningTest | null;
   practice: PracticeSession | null;
   checklist: Record<string, boolean>;      // exam-day checklist ticks
+  setupDone: boolean;                      // first-run setup (start date, target) completed
+  target: string;                          // target percentile, e.g. '99'; '' = not set
 }

@@ -21,10 +21,11 @@ import Strategy from './pages/Strategy';
 import SourcesPage from './pages/Sources';
 import DataPage from './pages/Data';
 import AccountPage from './pages/Account';
+import Setup from './pages/Setup';
 
 const NAV: { page: Page; label: string; group: string }[] = [
   { page: 'dashboard', label: 'Dashboard', group: 'Prepare' },
-  { page: 'plan', label: '30-day plan', group: 'Prepare' },
+  { page: 'plan', label: 'Study plan', group: 'Prepare' },
   { page: 'bank', label: 'Question bank', group: 'Prepare' },
   { page: 'tests', label: 'Sectional tests', group: 'Prepare' },
   { page: 'errors', label: 'Error log', group: 'Prepare' },
@@ -195,6 +196,8 @@ export default function App() {
                     <button className="btn" onClick={() => void signOut()}>Sign out</button>
                   </div>
                 </div>
+              ) : !state.setupDone && page !== 'account' ? (
+                <Setup />
               ) : (
                 <>
                   {state.activeTest && page !== 'tests' && <TestBanner t={state.activeTest} onResume={() => go('tests')} />}

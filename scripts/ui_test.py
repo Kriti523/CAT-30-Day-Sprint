@@ -8,6 +8,12 @@ SHOTS = os.path.join(ROOT, 'test-shots')
 results, errors = [], []
 def check(cond, msg):
     results.append((bool(cond), msg)); print(('PASS ' if cond else 'FAIL ') + msg)
+def setup(pg, start=None):
+    """First run asks for a start date and target; build the plan and land on the dashboard."""
+    pg.wait_for_selector('text=Let’s build your plan')
+    if start: pg.fill('#setup-start', start)
+    pg.get_by_role('button', name='Build my plan').click()
+    pg.wait_for_selector('text=Your CAT sprint')
 
 with sync_playwright() as p:
     b = p.chromium.launch()
@@ -16,8 +22,15 @@ with sync_playwright() as p:
     page.on('console', lambda m: errors.append(m.text) if m.type == 'error' and 'fonts.g' not in m.text and 'ERR_' not in m.text else None)
     page.on('pageerror', lambda e: errors.append(str(e)))
     page.route(re.compile(r'https://fonts\..*'), lambda r: r.abort())
-    page.goto(URL); page.wait_for_selector('text=Your CAT sprint')
-    check(page.locator('text=0/300').count() == 0 or True, 'dashboard renders')
+    page.goto(URL)
+    page.wait_for_selector('text=Let’s build your plan'); check(True, 'first run opens the plan setup')
+    page.fill('#setup-start', '2026-11-09')
+    check(page.locator('text=/keeps the 20 that matter most/').count() == 1, 'setup previews a shortened plan for 20 days')
+    page.fill('#setup-start', '2026-10-14')
+    check(page.locator('text=/plus 16 consolidation days/').count() == 1, 'setup previews a 46-day plan with consolidation days')
+    page.locator('#target-99').check()
+    setup(page, '2026-10-14')
+    check(page.locator('text=/target: 99th percentile/i').count() == 1, 'dashboard shows the target')
     page.screenshot(path=f'{SHOTS}/01-dashboard.png', full_page=False)
 
     # --- Bank: search + filters
@@ -108,9 +121,9 @@ with sync_playwright() as p:
     check(page.locator('text=/left$/').count() >= 1 or page.locator('text=/\\d+:\\d\\d left/').count() >= 1, 'timed random session shows countdown')
 
     # --- Plan page
-    page.get_by_role('button', name='30-day plan').first.click()
-    page.wait_for_selector('text=30-day study plan')
-    check(page.locator('button:has-text("Day 30")').count() >= 1, 'calendar shows 30 days')
+    page.get_by_role('button', name='Study plan').first.click()
+    page.wait_for_selector('text=Your 46-day plan')
+    check(page.locator('button:has-text("Day 46")').count() == 1 and page.locator('main >> text=CAT').count() >= 1, 'calendar runs from the start date to the exam')
     page.locator('input[id^="task-"]').first.check()
     page.get_by_role('button', name=re.compile('Busy day')).first.click()
     check(page.locator('text=45-minute fallback').count() >= 1, 'busy-day fallback shows')
@@ -206,7 +219,7 @@ with sync_playwright() as p:
     m = b.new_context(viewport={'width': 390, 'height': 844}, color_scheme='dark')
     mp = m.new_page(); mp.route(re.compile(r'https://fonts\..*'), lambda r: r.abort())
     mp.on('pageerror', lambda e: errors.append(str(e)))
-    mp.goto(URL); mp.wait_for_selector('text=Your CAT sprint')
+    mp.goto(URL); setup(mp)
     sw = mp.evaluate('document.documentElement.scrollWidth'); cw = mp.evaluate('document.documentElement.clientWidth')
     check(sw <= cw + 1, f'mobile: no horizontal page scroll ({sw} <= {cw})')
     bg = mp.evaluate('getComputedStyle(document.body).backgroundColor')
@@ -219,7 +232,7 @@ with sync_playwright() as p:
     mgo('Question bank')
     check(not mp.locator('#main-nav').is_visible(), 'mobile: drawer closes after picking a page')
     mp.screenshot(path=f'{SHOTS}/10-mobile-bank.png')
-    for tab in ['30-day plan', 'Paper trends', 'Topic priorities', 'Sectional tests']:
+    for tab in ['Study plan', 'Paper trends', 'Topic priorities', 'Sectional tests']:
         mgo(tab)
         sw = mp.evaluate('document.documentElement.scrollWidth')
         check(sw <= cw + 1, f'mobile {tab}: no horizontal scroll ({sw})')

@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { PLAN } from '../data/plan';
 import { NEXT_EXAM } from '../data/research';
 import { RANKED } from '../data/priorities';
 import { QUESTIONS, bySection } from '../lib/data';
 import { useNav } from '../lib/nav';
 import { reattemptQueue, useStore } from '../lib/store';
-import { aggregate, bySubtopic, dateForDay, daysUntil, fmtDate, pct, planDayIndex } from '../lib/stats';
+import { aggregate, bySubtopic, daysUntil, fmtDate, pct } from '../lib/stats';
+import { usePlan } from '../lib/usePlan';
 import { SECTIONS } from '../types';
 import { PlanDayCard } from '../components/PlanDay';
 import { Meter, PageHead, Panel, SECTION_NAME, secVar } from '../components/ui';
@@ -15,16 +15,17 @@ export default function Dashboard() {
   const { state } = useStore();
   const { go, startSession } = useNav();
   const [mSec, setMSec] = useState<(typeof SECTIONS)[number]>('QA');
-  const dayIdx = planDayIndex(state.startDate);
-  const today = PLAN.find((p) => p.day === Math.min(30, Math.max(1, dayIdx)))!;
+  const plan = usePlan();
+  const totalDays = plan.schedule.length;
+  // Before the plan starts show its first day, after it ends its last.
+  const today = plan.today ?? (plan.phase === 'before' ? plan.schedule[0] : plan.schedule[totalDays - 1]);
   const queue = reattemptQueue(state);
   const total = aggregate(state, QUESTIONS);
   const toExam = daysUntil(NEXT_EXAM.date);
-  const planDone = PLAN.filter((d) => state.busyDays[d.day] ? state.planTasks[`${d.day}:fb`] : d.blocks.every((_, i) => state.planTasks[`${d.day}:${i}`])).length;
   const weak = bySubtopic(state).filter((t) => t.attempted >= 2 && (t.accuracy ?? 1) < 0.7).sort((a, b) => (a.accuracy ?? 0) - (b.accuracy ?? 0)).slice(0, 5);
   const must = RANKED.filter((t) => t.cls === 'Must Master');
 
-  const status = dayIdx < 1 ? `Plan starts ${fmtDate(dateForDay(state.startDate, 1))}` : dayIdx > 30 ? '30-day plan complete' : `Day ${dayIdx} of 30`;
+  const status = plan.phase === 'during' ? `Day ${plan.today!.n} of ${totalDays}` : plan.phase === 'before' ? `Plan starts ${fmtDate(plan.schedule[0].date)}` : plan.phase === 'after' ? 'Plan complete' : 'Exam day';
 
   return (
     <div>
@@ -33,17 +34,20 @@ export default function Dashboard() {
           <button className="btn btn-primary" onClick={() => go('plan')}>Open today’s plan</button>
           <button className="btn" onClick={() => startSession(queue, 'Reattempt queue')} disabled={!queue.length}>Reattempt queue · {queue.length}</button>
         </>}>
-        {toExam > 0 ? <>CAT {NEXT_EXAM.year} is on <strong>{NEXT_EXAM.label}</strong> — <span className="num">{toExam}</span> days away. </> : null}
-        Built for 2 hours on weekdays, 4 on Saturdays and 5 on Sundays, with a 45-minute fallback for busy days.
+        {toExam > 0 ? <>CAT {NEXT_EXAM.year} is on <strong>{NEXT_EXAM.label}</strong>, <span className="num">{toExam}</span> day{toExam === 1 ? '' : 's'} away. </> : null}
+        {state.target ? <>Your target: <strong>{state.target === '99.5' ? '99.5+' : state.target}th percentile</strong> (<button className="underline underline-offset-2" onClick={() => go('strategy')}>what it takes</button>). </> : null}
+        Weekdays 2 hours, weekends 4–5, and a 45-minute fallback for busy days.
       </PageHead>
 
-      <div className="grid gap-4 md:grid-cols-4">
+      {/* On phones today's work comes first; on wider screens the stats lead. */}
+      <div className="flex flex-col gap-6">
+      <div className="order-2 grid gap-4 md:order-1 md:grid-cols-4">
         <Panel className="md:col-span-1">
           <div className="label">All sections</div>
           <div className="mt-1 display text-4xl font-bold num">{total.attempted}<span className="text-lg text-muted">/300</span></div>
           <div className="text-sm text-muted">questions attempted · accuracy {pct(total.accuracy)}</div>
           <div className="mt-3"><Meter value={total.attempted} max={300} label="Questions attempted" /></div>
-          <div className="mt-3 text-sm"><span className="num font-semibold">{planDone}</span>/30 plan days complete</div>
+          <div className="mt-3 text-sm"><span className="num font-semibold">{plan.done}</span>/{totalDays} plan days complete</div>
         </Panel>
         {SECTIONS.map((s) => {
           const a = aggregate(state, bySection(s));
@@ -61,10 +65,10 @@ export default function Dashboard() {
         })}
       </div>
 
-      <div className="mt-6 grid gap-4 lg:grid-cols-[1.6fr_1fr]">
+      <div className="order-1 grid gap-4 md:order-2 lg:grid-cols-[1.6fr_1fr]">
         <div>
-          <div className="label mb-2">{dayIdx >= 1 && dayIdx <= 30 ? 'Today' : dayIdx < 1 ? 'Day 1 preview' : 'Final day'}</div>
-          <PlanDayCard d={today} compact />
+          <div className="label mb-2">{plan.phase === 'during' ? 'Today' : plan.phase === 'before' ? 'Day 1 preview' : 'Final day'}</div>
+          {today ? <PlanDayCard s={today} total={totalDays} compact /> : <p className="panel p-4 text-muted">Your plan has ended. Good luck in the exam.</p>}
         </div>
         <div className="grid content-start gap-4">
           <Panel title="Needs attention">
@@ -98,6 +102,8 @@ export default function Dashboard() {
             </ul>
           </Panel>
         </div>
+      </div>
+
       </div>
 
       <Panel className="mt-6" title="Topic mastery" aside={

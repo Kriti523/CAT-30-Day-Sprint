@@ -3,24 +3,17 @@ import type { AppState, Confidence, ErrorReason, MockLog, PracticeSession, Runni
 import { QMAP, isCorrect } from './data';
 import { useAuth } from './auth';
 import { CloudSync, type SyncStatus } from './sync';
+import { toISODate } from './dates';
+
+export { toISODate as toISO } from './dates';
 
 const KEY = 'cat30-sprint:v1';
-
-function nextMonday(d = new Date()): string {
-  const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  const add = (8 - x.getDay()) % 7 || 7; // always the coming Monday
-  x.setDate(x.getDate() + (x.getDay() === 1 ? 0 : add));
-  return toISO(x);
-}
-export function toISO(d: Date) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
 
 export function emptyState(): AppState {
   return {
     v: 1, attempts: {}, bookmarks: {}, notes: {}, confidence: {}, errors: {},
-    planTasks: {}, busyDays: {}, startDate: nextMonday(), examDate: '2026-11-29', tests: [], mocks: [],
-    activeTest: null, practice: null, checklist: {},
+    planTasks: {}, busyDays: {}, startDate: toISODate(new Date()), examDate: '2026-11-29', tests: [], mocks: [],
+    activeTest: null, practice: null, checklist: {}, setupDone: false, target: '',
   };
 }
 
@@ -69,6 +62,8 @@ interface Store {
   togglePlanTask: (key: string) => void;
   toggleBusy: (day: number) => void;
   setStartDate: (d: string) => void;
+  completeSetup: (startDate: string, target: string) => void;
+  setTarget: (target: string) => void;
   saveTest: (t: TestResult) => void;
   saveMock: (m: MockLog) => void;
   setActiveTest: (t: RunningTest | null) => void;
@@ -148,6 +143,8 @@ function AccountStore({ uid, children }: { uid: string | null; children: ReactNo
     togglePlanTask: (key) => update((s) => ({ ...s, planTasks: { ...s.planTasks, [key]: !s.planTasks[key] } })),
     toggleBusy: (day) => update((s) => ({ ...s, busyDays: { ...s.busyDays, [day]: !s.busyDays[day] } })),
     setStartDate: (d) => update((s) => ({ ...s, startDate: d })),
+    completeSetup: (startDate, target) => update((s) => ({ ...s, startDate, target, setupDone: true })),
+    setTarget: (target) => update((s) => ({ ...s, target })),
     saveTest: (t) => update((s) => ({ ...s, tests: [...s.tests, t] })),
     saveMock: (m) => update((s) => ({ ...s, mocks: [...s.mocks.filter((x) => x.id !== m.id), m] })),
     deleteMock: (id) => update((s) => ({ ...s, mocks: s.mocks.filter((x) => x.id !== id) })),

@@ -5,6 +5,7 @@ import { RANKED, classify } from '../src/data/priorities';
 import { buildSection, scoreSection, marksFor } from '../src/lib/tests';
 import { emptyState } from '../src/lib/store';
 import { SECTIONS } from '../src/types';
+import { buildSchedule } from '../src/lib/schedule';
 
 let pass = 0; const fails: string[] = [];
 const ok = (c: boolean, m: string) => { if (c) pass++; else fails.push(m); };
@@ -59,5 +60,30 @@ ok(RANKED.every((t) => t.score >= 0 && t.score <= 100), 'scores in range');
 ok(classify(75) === 'Must Master' && classify(74) === 'Should Master' && classify(45) === 'Selective Practice' && classify(44) === 'Low Priority', 'classes');
 ok(new Set(RANKED.map((t) => t.cls)).size === 4, 'all four classes used');
 
+// Schedule: the plan laid over the real calendar up to the exam
+{
+  const exact = buildSchedule('2026-10-19', '2026-11-18'); // Monday start, exactly 30 days
+  ok(exact.length === 30 && exact.every((x, i) => x.d.day === i + 1), 'a 30-day Monday start reproduces the original plan order');
+  const long = buildSchedule('2026-10-14', '2026-11-29');   // Wednesday start, 46 days
+  const longPlan = long.filter((x) => x.d.day <= 30).map((x) => x.d.day);
+  ok(long.length === 46 && new Set(longPlan).size === 30, `46 days keep all 30 plan days (${new Set(longPlan).size})`);
+  ok(long.filter((x) => x.d.day > 30).length === 16, '46 days add 16 consolidation days');
+  ok(long[44].d.day === 29 && long[45].d.day === 30 && long[45].iso === '2026-11-28', 'plan ends with revision, then the light day before the exam');
+  ok(long[0].d.day === 1, 'plan opens with the QA diagnostic');
+  ok(long.filter((x) => ![0, 6].includes(x.date.getDay())).slice(0, 5).map((x) => x.d.day).join() === '1,2,3,4,5', 'consolidation days only start after the first five weekday plan days');
+  const weekendPlan = [6, 7, 13, 14, 20, 21, 27, 28];
+  ok(long.every((x) => weekendPlan.includes(x.d.day) ? [0, 6].includes(x.date.getDay()) : true), 'long plan days fall on weekends');
+  const short = buildSchedule('2026-11-09', '2026-11-29');  // 20 days
+  const shortDays = short.map((x) => x.d.day);
+  ok(short.length === 20 && new Set(shortDays).size === 20 && shortDays.every((d) => d <= 30), 'a 20-day plan keeps 20 distinct plan days, no extras');
+  ok([1, 2, 3, 6, 15, 16, 23, 28, 29, 30].every((d) => shortDays.includes(d)), 'short plans keep diagnostics, sectionals and the final mock');
+  ok(buildSchedule('2026-11-29', '2026-11-29').length === 0 && buildSchedule('2026-11-28', '2026-11-29').map((x) => x.d.day).join() === '30', 'edge cases right before the exam');
+  for (let start = 1; start <= 28; start++) {
+    const sch = buildSchedule(`2026-11-${String(start).padStart(2, '0')}`, '2026-11-29');
+    const ids = sch.map((x) => x.d.day);
+    ok(sch.length === 29 - start && new Set(ids).size === ids.length, `start 11-${start}: one entry per day, no repeats`);
+  }
+}
 console.log(`logic tests: ${pass} passed, ${fails.length} failed`);
-if (fails.length) { console.log(fails.slice(0, 30).join('\n')); process.exit(1); }
+if (fails.length) { 
+console.log(fails.slice(0, 30).join('\n')); process.exit(1); }

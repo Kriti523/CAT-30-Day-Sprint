@@ -8,6 +8,8 @@ import { AnswerInput, RichText, SetContext, Solution } from '../components/Quest
 import { Calculator } from '../components/Calculator';
 import { LineChart } from '../components/charts';
 import { Note, PageHead, Panel, StatusPill, secVar } from '../components/ui';
+import { usePlan } from '../lib/usePlan';
+import { fmtDate } from '../lib/stats';
 
 export default function Tests() {
   const store = useStore();
@@ -15,6 +17,8 @@ export default function Tests() {
   const run = state.activeTest;
   const nav = useNav();
   const [result, setResult] = useState<TestResult | null>(null);
+  const { schedule } = usePlan();
+  const firstTest = schedule.find((x) => x.d.blocks.some((b) => b.testSection));
 
   const start = (which: Section | 'FULL') => {
     const secs = which === 'FULL' ? SECTIONS : [which];
@@ -72,7 +76,7 @@ export default function Tests() {
       <div className="mt-4"><Note>The bank holds enough fresh material for roughly four complete in-app mocks. For true exam simulation, also take the official IIM mock and full-length external mocks (see the plan’s weekend days) and log them on the Mock Analysis page.</Note></div>
 
       <Panel className="mt-6" title="Test history">
-        {history.length === 0 ? <p className="text-muted">No tests yet. Your first in-app sectional appears in the plan on Day 15.</p> : (
+        {history.length === 0 ? <p className="text-muted">No tests yet.{firstTest ? ` Your plan’s first in-app sectional is on Day ${firstTest.n} (${fmtDate(firstTest.date)}).` : ''}</p> : (
           <>
             <LineChart ariaLabel="Test scores over time" labels={history.map((_, i) => `#${state.tests.length - history.length + i + 1}`)}
               series={[{ name: 'Score', values: history.map((t) => t.score), color: 'var(--accent)' }]} />

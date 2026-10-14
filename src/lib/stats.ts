@@ -26,18 +26,6 @@ export function bySubtopic(state: AppState, section?: Section) {
   });
 }
 
-export function planDayIndex(startDate: string, now = new Date()): number {
-  const [y, m, d] = startDate.split('-').map(Number);
-  const start = new Date(y, m - 1, d);
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  return Math.floor((today.getTime() - start.getTime()) / 86400000) + 1; // day 1 = start date
-}
-
-export function dateForDay(startDate: string, day: number): Date {
-  const [y, m, d] = startDate.split('-').map(Number);
-  return new Date(y, m - 1, d + day - 1);
-}
-
 export const fmtDate = (d: Date) => d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
 
 export function daysUntil(iso: string, now = new Date()): number {

@@ -145,7 +145,7 @@ with sync_playwright() as p:
 
     # --- Device A: progress made before having an account
     ctxA, A = device(b)
-    A.goto(URL); A.wait_for_selector('text=Your CAT sprint')
+    A.goto(URL); A.get_by_role('button', name='Build my plan').click(); A.wait_for_selector('text=Your CAT sprint')
     check(A.get_by_role('button', name='Sign in').count() == 1, 'guest sees a Sign in button')
     tick(A, 0)
     check(done_count(A) == '1/4 done', 'guest ticks a plan task')
@@ -174,7 +174,7 @@ with sync_playwright() as p:
 
     # --- Device B signs in and sees the same progress
     ctxB, B = device(b)
-    B.goto(URL); B.wait_for_selector('text=Your CAT sprint')
+    B.goto(URL); B.wait_for_selector('text=Let’s build your plan')
     sign_in(B); wait_saved(B)
     check(done_count(B) == '2/4 done', 'second device shows the account progress (2/4)')
 
@@ -216,13 +216,15 @@ with sync_playwright() as p:
     A.get_by_role('button', name='Sign out').click()
     A.get_by_role('button', name='Sign in').first.wait_for()
     A.get_by_role('button', name='Dashboard').first.click()
+    check(A.locator('text=Let’s build your plan').count() == 1, 'after sign-out the device starts fresh with plan setup')
+    A.get_by_role('button', name='Build my plan').click()
     check(done_count(A) == '0/4 done', 'after sign-out the device shows no account progress')
     check(A.evaluate(f"localStorage.getItem('cat30-sprint:v1:user:{uid}')") is None, 'account copy cleared from the browser on sign-out')
 
     # --- A brand-new device whose first load fails gets a retry screen, not empty progress
     sb.rest_down = True
     ctxC, C = device(b)
-    C.goto(URL); C.wait_for_selector('text=Your CAT sprint')
+    C.goto(URL); C.wait_for_selector('text=Let’s build your plan')
     sign_in(C)
     C.wait_for_selector('text=Couldn’t load your progress', timeout=20000)
     check(True, 'failed first load shows a retry screen')

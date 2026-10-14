@@ -1,25 +1,31 @@
-import type { PlanDay } from '../data/plan';
-import { expandRefs } from '../lib/data';
+import type { ScheduledDay } from '../lib/schedule';
+import { QUESTIONS, expandRefs, shuffle } from '../lib/data';
 import { useNav } from '../lib/nav';
-import { useStore } from '../lib/store';
-import { dateForDay, fmtDate } from '../lib/stats';
+import { reattemptQueue, useStore } from '../lib/store';
+import { fmtDate } from '../lib/stats';
 import { SectionTag, StatusPill } from './ui';
 
 const MODE_TONE: Record<string, 'accent' | 'neutral' | 'warn' | 'good'> = { Timed: 'warn', Untimed: 'neutral', Review: 'neutral', Mock: 'accent', Learn: 'good' };
 
-export function PlanDayCard({ d, compact = false }: { d: PlanDay; compact?: boolean }) {
+export function PlanDayCard({ s, total, compact = false }: { s: ScheduledDay; total: number; compact?: boolean }) {
   const { state, togglePlanTask, toggleBusy } = useStore();
   const { startSession, go } = useNav();
+  const { d } = s;
   const busy = !!state.busyDays[d.day];
   const done = d.blocks.filter((_, i) => state.planTasks[`${d.day}:${i}`]).length;
   const fbDone = !!state.planTasks[`${d.day}:fb`];
-  const date = dateForDay(state.startDate, d.day);
+  const queue = reattemptQueue(state);
+
+  const runAction = (action: 'reattempt' | 'random', title: string) => {
+    if (action === 'reattempt') startSession(queue, 'Reattempt queue');
+    else startSession(shuffle(QUESTIONS.filter((q) => !state.attempts[q.id]).map((q) => q.id)).slice(0, 15), `Day ${s.n}: ${title}`, true);
+  };
 
   return (
     <article className="panel p-4 sm:p-5">
       <header className="mb-3 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <div className="label">Day {d.day} · {fmtDate(date)} · {d.kind} · {d.minutes} min</div>
+          <div className="label">Day {s.n} of {total} · {fmtDate(s.date)} · {d.minutes} min</div>
           <h3 className="mt-0.5 text-xl font-bold">{d.focus}</h3>
         </div>
         <div className="no-print flex flex-wrap items-center gap-2">
@@ -33,7 +39,7 @@ export function PlanDayCard({ d, compact = false }: { d: PlanDay; compact?: bool
           <div className="label mb-1" style={{ color: 'var(--warn)' }}>45-minute fallback</div>
           <p>{d.fallback}</p>
           <div className="mt-2 flex flex-wrap gap-2">
-            {d.fallbackRefs && <button className="btn btn-sm btn-primary" onClick={() => startSession(expandRefs(d.fallbackRefs!), `Day ${d.day} fallback`)}>Start fallback practice</button>}
+            {d.fallbackRefs && <button className="btn btn-sm btn-primary" onClick={() => startSession(expandRefs(d.fallbackRefs!), `Day ${s.n} fallback`)}>Start fallback practice</button>}
             <label className="inline-flex items-center gap-2 text-sm"><input id={`fb-${d.day}`} type="checkbox" checked={fbDone} onChange={() => togglePlanTask(`${d.day}:fb`)} /> Mark fallback done</label>
           </div>
         </div>
@@ -55,7 +61,9 @@ export function PlanDayCard({ d, compact = false }: { d: PlanDay; compact?: bool
                   </div>
                   {!compact && b.detail && <p className="mt-0.5 text-sm text-muted">{b.detail}</p>}
                   <div className="no-print mt-1 flex flex-wrap gap-2">
-                    {ids.length > 0 && <button className="btn btn-sm" onClick={() => startSession(ids, `Day ${d.day}: ${b.title}`, b.mode === 'Timed')}>{b.mode === 'Timed' ? 'Start timed' : 'Start'} · {ids.length} Qs</button>}
+                    {ids.length > 0 && <button className="btn btn-sm" onClick={() => startSession(ids, `Day ${s.n}: ${b.title}`, b.mode === 'Timed')}>{b.mode === 'Timed' ? 'Start timed' : 'Start'} · {ids.length} Qs</button>}
+                    {b.action === 'random' && <button className="btn btn-sm" onClick={() => runAction('random', b.title)}>Start timed · 15 Qs</button>}
+                    {b.action === 'reattempt' && <button className="btn btn-sm" disabled={!queue.length} onClick={() => runAction('reattempt', b.title)}>Reattempt queue · {queue.length}</button>}
                     {b.testSection && <button className="btn btn-sm" onClick={() => go('tests', { testSection: b.testSection })}>Open {b.testSection === 'FULL' ? 'full mock' : `${b.testSection} sectional`}</button>}
                     {b.mode === 'Mock' && !b.testSection && <button className="btn btn-sm btn-ghost" onClick={() => go('mocks')}>Log mock analysis</button>}
                   </div>
