@@ -40,3 +40,10 @@ export async function saveProgress(uid: string, state: AppState, base: number | 
   if (error) throw error;
   return data.length ? base + 1 : null;
 }
+
+/** Sends a problem report about a question (see the reports table in supabase/schema.sql). */
+export async function sendReport(questionId: string, reason: string, message: string) {
+  if (!supabase) throw new Error('Reports need accounts to be configured');
+  const { error } = await supabase.from('reports').insert({ question_id: questionId, reason, message: message.slice(0, 1000) });
+  if (error) throw error;
+}

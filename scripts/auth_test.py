@@ -40,6 +40,7 @@ class FakeSupabase:
         self.confirm = False  # sign-ups must confirm their email first
         self.entitlements = {}  # user_id -> license key
         self.licenses = {'GOOD-KEY': {}, 'REFUNDED-KEY': {'refunded': True}}  # what Gumroad knows
+        self.reports = []
 
     @staticmethod
     def jwt(uid, email):
@@ -97,6 +98,9 @@ class FakeSupabase:
             return reply(200, self.user(me))
         if path in ('/auth/v1/logout', '/auth/v1/recover'):
             return reply(204 if path.endswith('logout') else 200, None if path.endswith('logout') else {})
+        if path == '/rest/v1/reports' and req.method == 'POST':
+            self.reports.append({**body, 'user_id': self.users[me]['id'] if me else None})
+            return reply(201)
         if path == '/rest/v1/entitlements' and req.method == 'GET':
             uid = self.users[me]['id'] if me else None
             want = (q.get('user_id', ['eq.'])[0])[3:]
@@ -239,6 +243,17 @@ with sync_playwright() as p:
     st = sb.rows[uid]['state']['planTasks']
     check(st.get('1:1') is False and st.get('1:3') is True and done_count(A) == '3/4 done',
           'older offline edit gives way to the newer edit from the other device')
+
+    # --- Reporting a problem with a question
+    A.get_by_role('button', name='Question bank').first.click(); A.get_by_role('tab', name=re.compile('QA')).click()
+    A.fill('#bank-search', 'Q021'); A.locator('[data-qid] button').first.click(); A.wait_for_timeout(200)
+    A.get_by_role('button', name='Report a problem').click()
+    A.select_option('#report-reason-Q021', 'Typo or unclear question'); A.fill('#report-msg-Q021', 'Step 2 is unclear')
+    A.get_by_role('button', name='Send report').click(); A.wait_for_selector('text=/We’ll check Q021/')
+    rep = sb.reports[-1] if sb.reports else {}
+    check(rep.get('question_id') == 'Q021' and rep.get('reason') == 'Typo or unclear question' and rep.get('message') == 'Step 2 is unclear' and rep.get('user_id') == uid,
+          'a problem report is saved with the question, reason, details and sender')
+    A.get_by_role('button', name='Dashboard').first.click()
 
     # --- Sign out: back to this device's own (now empty) progress, account copy removed from the browser
     A.get_by_role('button', name=re.compile('^Account:')).click()

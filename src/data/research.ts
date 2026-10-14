@@ -17,7 +17,8 @@ export interface Source {
 }
 
 export const SOURCES: Source[] = [
-  { key: 'iim', name: 'CAT official website (iimcat.ac.in)', url: 'https://iimcat.ac.in', kind: 'Official / exam body', usedFor: 'Primary authority for exam date, pattern and notices. Could not be fetched from this environment (HTTP 403); official facts were confirmed via two secondary reports of the official notification.' },
+  { key: 'iim', name: 'CAT official website (iimcat.ac.in)', url: 'https://iimcat.ac.in', kind: 'Official / exam body', usedFor: 'The final word on the exam date, pattern and notices. The facts in this app match reports of the official CAT 2026 notification; always confirm on iimcat.ac.in.' },
+  { key: 'deccanherald-2026', name: 'Deccan Herald – CAT 2026 on November 29', url: 'https://deccanherald.com/education/cat-2026-to-be-held-on-november-29-in-three-sessions-online-registrations-to-begin-on-august-3-4090281', kind: 'Education portal', usedFor: 'CAT 2026 date (29 Nov 2026), three sessions, registration window.' },
   { key: 'cracku-notif', name: 'Cracku – CAT 2026 notification summary', url: 'https://cracku.in/cat-2026-notification-pdf-out/', kind: 'Coaching analysis', usedFor: 'CAT 2026 date (29 Nov 2026), registration window, eligibility.' },
   { key: 'shiksha-cat', name: 'Shiksha – CAT 2026 exam page', url: 'https://www.shiksha.com/mba/cat-exam', kind: 'Education portal', usedFor: 'CAT 2026 date and conducting IIM (IIM Indore).' },
   { key: 'careers360-dates', name: 'Careers360 – CAT exam dates', url: 'https://www.careers360.com/mba/articles/cat-exam-dates', kind: 'Education portal', usedFor: 'CAT 2026 date, IIM Indore, three slots, 204 total marks.' },
@@ -43,7 +44,7 @@ export interface YearPattern {
 export const PATTERN: YearPattern[] = [
   { year: 2023, iim: 'IIM Lucknow', date: '26 Nov 2023', total: 66, VARC: 24, DILR: 20, QA: 22, minutesPerSection: 40,
     tita: { VARC: 'not verified', DILR: 'not verified', QA: 'not verified' },
-    reliability: 'Cross-checked (2+ sources)', note: 'Section counts agree across PW and InsideIIM. Convening IIM and date are widely reported but were not re-verified on iimcat.ac.in in this session. Reliable per-section TITA counts for 2023 were not found.',
+    reliability: 'Cross-checked (2+ sources)', note: 'Section counts agree across PW and InsideIIM. Reliable per-section TITA counts for 2023 were not found.',
     sources: ['pw-2023', 'insideiim-2023'] },
   { year: 2024, iim: 'IIM Calcutta', date: '24 Nov 2024', total: 68, VARC: 24, DILR: 22, QA: 22, minutesPerSection: 40,
     tita: { VARC: '2', DILR: '10', QA: '8' },
@@ -55,7 +56,7 @@ export const PATTERN: YearPattern[] = [
     sources: ['ims-2025', 'toprankers-2025', 'gradsqr-2025'] },
 ];
 
-export const NEXT_EXAM = { year: 2026, iim: 'IIM Indore', date: '2026-11-29', label: 'Sunday, 29 November 2026 (three slots)', sources: ['cracku-notif', 'shiksha-cat', 'careers360-dates'] };
+export const NEXT_EXAM = { year: 2026, iim: 'IIM Indore', date: '2026-11-29', label: 'Sunday, 29 November 2026 (three slots)', sources: ['deccanherald-2026', 'cracku-notif', 'shiksha-cat', 'careers360-dates'] };
 
 /** QA broad-topic counts summed over the three slots of each year. */
 export const QA_BROAD = {

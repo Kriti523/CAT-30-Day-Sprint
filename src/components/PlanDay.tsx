@@ -26,7 +26,7 @@ export function PlanDayCard({ s, total, compact = false }: { s: ScheduledDay; to
       <header className="mb-3 flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="label">Day {s.n} of {total} · {fmtDate(s.date)} · {d.minutes} min</div>
-          <h3 className="mt-0.5 text-xl font-bold">{d.focus}</h3>
+          <h2 className="mt-0.5 text-xl font-bold">{d.focus}</h2>
         </div>
         <div className="no-print flex flex-wrap items-center gap-2">
           <span className="text-sm text-muted num">{busy ? (fbDone ? 'Fallback done' : 'Busy-day mode') : `${done}/${d.blocks.length} done`}</span>

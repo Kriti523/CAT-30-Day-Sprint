@@ -10,6 +10,7 @@ import { LineChart } from '../components/charts';
 import { Note, PageHead, Panel, StatusPill, secVar } from '../components/ui';
 import { BENCH_2025 } from '../data/research';
 import { toISO } from '../lib/store';
+import { track } from '../lib/config';
 import { usePlan } from '../lib/usePlan';
 import { useAuth } from '../lib/auth';
 import { Unlock } from '../components/Unlock';
@@ -51,6 +52,7 @@ export default function Tests() {
       qids, answers: r.answers, spent: r.spent, score: Object.values(perSection).reduce((a, b) => a + b.score, 0), perSection,
     };
     store.saveTest(t);
+    track(r.kind === 'full' ? 'Mock finished' : 'Sectional finished');
     // A full mock goes straight into Mock analysis, ready for reflections.
     if (r.kind === 'full') {
       const minutes = (sec: Section) => Math.round(r.sections.find((x) => x.s === sec)!.ids.reduce((a, id) => a + (r.spent[id] ?? 0), 0) / 60);

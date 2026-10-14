@@ -6,6 +6,7 @@ import type { SyncStatus } from './lib/sync';
 import { sectionLeft } from './lib/tests';
 import { fmtTime } from './lib/data';
 import type { RunningTest } from './types';
+import { applyTheme, savedTheme, type Theme } from './lib/theme';
 import type { Section } from './types';
 import Dashboard from './pages/Dashboard';
 import PlanPage from './pages/Plan';
@@ -185,6 +186,7 @@ export default function App() {
                   ))}
                 </div>
               ))}
+              <ThemeSwitch />
             </div>
           </nav>
           <div className="min-w-0 flex-1">
@@ -254,6 +256,24 @@ function TestBanner({ t, onResume }: { t: RunningTest; onResume: () => void }) {
       style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}>
       <span className="text-sm"><strong>{t.kind === 'full' ? 'Mock' : 'Sectional'} in progress</strong> · {sec} · {left > 0 ? <span className="num">{fmtTime(left)} left</span> : 'time is up, open it to continue'}. The clock keeps running.</span>
       <button className="btn btn-sm btn-primary" onClick={onResume}>Resume test</button>
+    </div>
+  );
+}
+
+function ThemeSwitch() {
+  const [theme, setTheme] = useState<Theme>(savedTheme);
+  const pick = (t: Theme) => { applyTheme(t); setTheme(t); };
+  return (
+    <div className="mt-6 px-2">
+      <div className="label mb-1">Theme</div>
+      <div className="flex gap-1" role="radiogroup" aria-label="Theme">
+        {(['system', 'light', 'dark'] as Theme[]).map((t) => (
+          <button key={t} role="radio" aria-checked={theme === t} className="btn btn-sm flex-1 justify-center" onClick={() => pick(t)}
+            style={theme === t ? { background: 'var(--ink)', color: 'var(--ground)', borderColor: 'var(--ink)' } : undefined}>
+            {t[0].toUpperCase() + t.slice(1)}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

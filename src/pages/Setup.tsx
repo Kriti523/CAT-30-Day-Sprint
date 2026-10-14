@@ -5,6 +5,7 @@ import { buildSchedule, planDaysIncluded } from '../lib/schedule';
 import { toISODate } from '../lib/dates';
 import { daysUntil, fmtDate } from '../lib/stats';
 import { Note, PageHead, Panel } from '../components/ui';
+import { track } from '../lib/config';
 
 const TARGETS: [string, string, string][] = [
   ['90', '90th', 'Most newer IIMs and good non-IIM schools'],
@@ -29,7 +30,7 @@ export default function Setup() {
       <PageHead eyebrow="Two questions" title="Let’s build your plan">
         CAT {NEXT_EXAM.year} is on {NEXT_EXAM.label}, {daysUntil(exam)} days from today. The plan fits itself to the days you have.
       </PageHead>
-      <form className="grid max-w-2xl gap-4" onSubmit={(e) => { e.preventDefault(); if (total) completeSetup(start, target); }}>
+      <form className="grid max-w-2xl gap-4" onSubmit={(e) => { e.preventDefault(); if (total) { completeSetup(start, target); track('Setup done'); } }}>
         <Panel title="When do you start?">
           <label className="grid gap-1 text-sm" htmlFor="setup-start"><span className="label">Start date</span></label>
           <input id="setup-start" type="date" className="field" style={{ width: 'auto' }} value={start} max={toISODate(new Date(ey, em - 1, ed - 1))}

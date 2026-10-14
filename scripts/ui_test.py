@@ -68,7 +68,7 @@ with sync_playwright() as p:
     check(t1 != '0:00', f'question timer running ({t1})')
     page.get_by_role('button', name='Show hint').click()
     check(page.locator('text=Hint ·').count() == 1, 'hint shows')
-    page.get_by_role('radio').nth(ans).click()
+    page.locator('.opt').nth(ans).click()
     page.get_by_role('button', name='Check answer').click()
     check(page.locator('text=✓ Correct').count() == 1, 'correct MCQ marked correct')
     check(page.locator('text=Step-by-step solution').count() == 1, 'solution shown')
@@ -193,6 +193,20 @@ with sync_playwright() as p:
     check(page.locator('text=Options shuffled').count() == 1 and page.locator('text=Previous try: right').count() == 1, 'a reattempt shows shuffled options and the previous result')
     page.get_by_role('button', name='Dashboard').first.click()
     check(page.locator('text=/1-day streak/').count() == 1, 'dashboard shows the practice streak')
+
+    # --- Keyboard practice, problem reports (no accounts here, so the report is shown to copy), theme switch
+    page.get_by_role('button', name='Question bank').first.click(); page.get_by_role('tab', name=re.compile('QA')).click()
+    page.fill('#bank-search', 'Q012'); page.locator('[data-qid] button').first.click(); page.wait_for_timeout(200)
+    page.keyboard.press('b'); page.keyboard.press('Enter'); page.wait_for_timeout(200)
+    check(page.locator('text=Step-by-step solution').count() == 1, 'keyboard: B then Enter answers a question')
+    page.get_by_role('button', name='Report a problem').click()
+    page.fill('#report-msg-Q012', 'Option text has a typo')
+    check(page.locator('text=/Question Q012: Wrong answer key\\. Option text has a typo/').count() == 1, 'without accounts, a report is shown ready to copy')
+    page.get_by_role('radio', name='Dark').click()
+    check(page.evaluate('getComputedStyle(document.body).backgroundColor') == 'rgb(16, 19, 18)', 'theme switch: Dark applies the dark theme')
+    page.reload(); page.wait_for_timeout(400)
+    check(page.evaluate("document.documentElement.dataset.theme") == 'dark', 'theme choice survives a reload')
+    page.get_by_role('radio', name='System').click()
 
     # --- A full mock: results with benchmarks and set review, logged on Mock analysis
     page.get_by_role('button', name='Sectional tests').first.click()

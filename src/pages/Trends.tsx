@@ -24,7 +24,7 @@ export default function Trends() {
 
       <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {INSIGHTS.map((i) => (
-          <div key={i.title} className="panel p-4"><h3 className="font-bold">{i.title}</h3><p className="mt-1 text-sm text-muted">{i.body}</p></div>
+          <div key={i.title} className="panel p-4"><h2 className="font-bold">{i.title}</h2><p className="mt-1 text-sm text-muted">{i.body}</p></div>
         ))}
       </div>
 

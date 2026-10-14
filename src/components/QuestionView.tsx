@@ -5,6 +5,8 @@ import { SETMAP, answerLabel, displayOrder, fmtTime, isCorrect, letters, optionL
 import { useStore } from '../lib/store';
 import { DiffTag, SectionTag, StatusPill } from './ui';
 import { CAT, Donut, GroupedBars } from './charts';
+import { sendReport, supabase } from '../lib/cloud';
+import { BUY_URL, SUPPORT_EMAIL } from '../lib/config';
 
 /* ---------------- text helpers ---------------- */
 function highlight(text: string, quotes: string[]): ReactNode {
@@ -98,6 +100,7 @@ export function QuestionTools({ q, wrong }: { q: Question; wrong: boolean }) {
   const conf = state.confidence[q.id];
   const err = state.errors[q.id];
   const [open, setOpen] = useState(!!state.notes[q.id]);
+  const [reporting, setReporting] = useState(false);
   return (
     <div className="no-print mt-4 grid gap-3 border-t pt-4" style={{ borderColor: 'var(--line)' }}>
       <div className="flex flex-wrap items-center gap-2">
@@ -113,7 +116,9 @@ export function QuestionTools({ q, wrong }: { q: Question; wrong: boolean }) {
           ))}
         </div>
         <button className="btn btn-sm btn-ghost" onClick={() => setOpen((o) => !o)}>{open ? 'Hide note' : 'Add note'}</button>
+        <button className="btn btn-sm btn-ghost ml-auto" aria-expanded={reporting} onClick={() => setReporting((r) => !r)}>Report a problem</button>
       </div>
+      {reporting && <ReportForm qid={q.id} />}
       {wrong && (
         <label className="flex flex-wrap items-center gap-2 text-sm">
           <span className="label">Why did you miss it?</span>
@@ -128,6 +133,39 @@ export function QuestionTools({ q, wrong }: { q: Question; wrong: boolean }) {
       {open && (
         <textarea id={`note-${q.id}`} className="field" rows={3} placeholder="Your note: the rule you want to remember next time"
           value={state.notes[q.id] ?? ''} onChange={(e) => setNote(q.id, e.target.value)} />
+      )}
+    </div>
+  );
+}
+
+const REPORT_REASONS = ['Wrong answer key', 'Solution is wrong or unclear', 'Typo or unclear question', 'Something else'];
+
+/** Lets students flag a mistake in a question. Sent to the reports table, or copied for support without accounts. */
+function ReportForm({ qid }: { qid: string }) {
+  const [reason, setReason] = useState(REPORT_REASONS[0]);
+  const [msg, setMsg] = useState('');
+  const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+  const text = `Question ${qid}: ${reason}${msg.trim() ? `. ${msg.trim()}` : ''}`;
+  const send = async () => {
+    setStatus('sending');
+    try { await sendReport(qid, reason, msg.trim()); setStatus('sent'); } catch { setStatus('error'); }
+  };
+  if (status === 'sent') return <p className="text-sm" role="status">Thanks. We’ll check {qid} and fix it in the next update.</p>;
+  return (
+    <div className="grid gap-2 rounded-lg p-3" style={{ background: 'var(--sunk)' }}>
+      <label className="grid gap-1 text-sm"><span className="label">What’s wrong with {qid}?</span>
+        <select id={`report-reason-${qid}`} className="field" style={{ width: 'auto' }} value={reason} onChange={(e) => setReason(e.target.value)}>
+          {REPORT_REASONS.map((r) => <option key={r}>{r}</option>)}
+        </select>
+      </label>
+      <textarea id={`report-msg-${qid}`} className="field" rows={2} maxLength={1000} placeholder="Details help: which option, which step, what you expected" value={msg} onChange={(e) => setMsg(e.target.value)} />
+      {supabase ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <button className="btn btn-sm btn-primary" disabled={status === 'sending'} onClick={send}>{status === 'sending' ? 'Sending…' : 'Send report'}</button>
+          {status === 'error' && <span className="text-sm" style={{ color: 'var(--bad)' }} role="alert">Couldn’t send it. Check your connection and try again.</span>}
+        </div>
+      ) : (
+        <p className="text-sm">Send this to {SUPPORT_EMAIL ? <span className="select-all font-semibold">{SUPPORT_EMAIL}</span> : BUY_URL ? <a href={BUY_URL} target="_blank" rel="noreferrer">the seller</a> : 'the seller'}: <span className="mono select-all">{text}</span></p>
       )}
     </div>
   );
@@ -248,11 +286,33 @@ export function QuestionView({ q, onNext, onPrev, position }: { q: Question; onN
   useEffect(() => { setValue(''); setSubmitted(null); setHint(false); }, [q.id]);
 
   const submit = () => { if (value === '') return; record(q.id, value, sec); setSubmitted(value); };
+
   const prev = state.attempts[q.id];
   // Fixed when the question opens, so it doesn't change once this attempt is recorded.
   const order = useMemo(() => displayOrder(q, prev?.n ?? 0), [q.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const before = useMemo(() => prev, [q.id]); // eslint-disable-line react-hooks/exhaustive-deps -- the attempt before this one
   const over = sec > q.time;
+
+  // Practice shortcuts (tests have none, as in the CAT): A–D choose, Enter checks, N / P move, H shows the hint.
+  const keys = useRef({ submit, onNext, onPrev, submitted, order });
+  keys.current = { submit, onNext, onPrev, submitted, order };
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement;
+      if (e.ctrlKey || e.metaKey || e.altKey || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable) return;
+      const k = e.key.toLowerCase();
+      const cur = keys.current;
+      if (cur.submitted === null && q.type === 'MCQ' && q.options && 'abcd'.includes(k) && k.length === 1) {
+        const p = 'abcd'.indexOf(k);
+        if (p < q.options.length) { setValue(String(cur.order ? cur.order[p] : p)); e.preventDefault(); }
+      } else if (k === 'enter' && cur.submitted === null) { cur.submit(); e.preventDefault(); }
+      else if (k === 'n' && cur.submitted !== null && cur.onNext) cur.onNext();
+      else if (k === 'p' && cur.onPrev) cur.onPrev();
+      else if (k === 'h' && cur.submitted === null) setHint(true);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [q.id, q.type, q.options]);
 
   const body = (
     <div>
@@ -280,6 +340,7 @@ export function QuestionView({ q, onNext, onPrev, position }: { q: Question; onN
           onNext && <button className="btn btn-primary" onClick={onNext}>Next question →</button>
         )}
         {onPrev && <button className="btn btn-ghost" onClick={onPrev}>← Previous</button>}
+        <span className="hidden text-xs text-muted lg:inline" aria-hidden>Keys: A–D · Enter · N next · H hint</span>
         <span className="ml-auto flex items-center gap-2 text-sm">
           {position && <span className="text-muted">{position}</span>}
           <span className="num rounded-md px-2 py-0.5" style={{ background: over && submitted === null ? 'var(--warn-soft)' : 'var(--sunk)', color: over && submitted === null ? 'var(--warn)' : 'var(--ink)' }}

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { BUY_URL, SUPPORT_EMAIL } from '../lib/config';
+import { ANALYTICS, BUY_URL, SUPPORT_EMAIL } from '../lib/config';
 import { useAuth } from '../lib/auth';
 import { PageHead, Panel } from '../components/ui';
 
@@ -28,6 +28,7 @@ export default function Legal({ which }: { which: 'privacy' | 'terms' | 'refunds
       </Section>
       <Section title="Why, and where">
         <p>Only to run the app: to save your progress and, with an account, to show the same progress on every device where you sign in. We don’t sell your data, show ads, or use tracking cookies.</p>
+        {ANALYTICS && <p>We count visits and a few actions (such as finishing a test) with Plausible Analytics, which uses no cookies and collects no personal data.</p>}
         {enabled && <p>Account data is stored with Supabase, our database provider. A copy of your progress is also kept in your browser so the app works offline.</p>}
         <p>Payments are handled by Gumroad. We never see your card details; Gumroad shares your email and purchase so we can give you access.</p>
       </Section>

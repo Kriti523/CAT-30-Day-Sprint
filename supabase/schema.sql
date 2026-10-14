@@ -47,3 +47,24 @@ create policy "Read own entitlement" on public.entitlements
 
 revoke all on public.entitlements from anon, authenticated;
 grant select on public.entitlements to authenticated;
+
+-- ---------------------------------------------------------------------------------------------------
+-- Problem reports from the "Report a problem" button on each question. Anyone using the app can send one;
+-- nobody can read them through the app (read them in the Supabase dashboard).
+create table if not exists public.reports (
+  id          bigint generated always as identity primary key,
+  created_at  timestamptz not null default now(),
+  user_id     uuid default auth.uid() references auth.users (id) on delete set null,
+  question_id text not null check (char_length(question_id) <= 12),
+  reason      text not null check (char_length(reason) <= 60),
+  message     text not null default '' check (char_length(message) <= 1000)
+);
+
+alter table public.reports enable row level security;
+
+drop policy if exists "Anyone can send a report" on public.reports;
+create policy "Anyone can send a report" on public.reports
+  for insert to anon, authenticated with check (user_id is null or user_id = (select auth.uid()));
+
+revoke all on public.reports from anon, authenticated;
+grant insert on public.reports to anon, authenticated;

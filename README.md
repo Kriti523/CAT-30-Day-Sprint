@@ -246,6 +246,13 @@ With accounts set up, you can make the full app require a purchase. Until a Gumr
 
 Buyers sign in, enter the key from their receipt, and the account is unlocked on every device. One key unlocks one account; refunded or charged-back purchases are refused.
 
+### Before you share the link
+
+- Set `VITE_SITE_URL` to where the app is hosted, so links shared on WhatsApp or Telegram show a preview card (title, description and `public/og.png`).
+- The app has an icon and a web app manifest, so it can be added to a phone's home screen.
+- Students can flag a mistake with **Report a problem** on any question. With accounts set up, reports go to the `reports` table (read them in the Supabase dashboard); without, the app shows the report text to send to you.
+- Optional: set `VITE_PLAUSIBLE_DOMAIN` for cookieless visit counts and a few events (setup done, test finished, signed up, unlocked) with [Plausible](https://plausible.io). The Privacy page mentions it only when it's on.
+
 ### Legal pages
 
 Privacy, Terms and Refunds pages are linked from every page's footer, with a "not affiliated with the IIMs" line. They are plain-language drafts based on a 7-day refund policy: **review them, and have them checked, before you sell.**

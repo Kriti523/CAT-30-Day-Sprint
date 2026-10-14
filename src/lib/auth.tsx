@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { AuthError, User } from '@supabase/supabase-js';
 import { AUTH_KEY, supabase } from './cloud';
-import { PAYWALL } from './config';
+import { PAYWALL, track } from './config';
 
 export interface Account { id: string; email: string }
 
@@ -108,6 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (error) return { error: friendly(error), confirm: false };
       // With email confirmation on, an existing address comes back as a user with no identities.
       if (data.user && data.user.identities?.length === 0) return { error: 'An account with this email already exists. Sign in instead.', confirm: false };
+      track('Signed up');
       return { error: null, confirm: !data.session };
     },
     sendReset: async (email) => {
@@ -124,7 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     entitled: !PAYWALL || (!!user && entitled),
     claimLicense: async (key) => {
       const { data, error } = await supabase!.functions.invoke('claim-license', { body: { licenseKey: key } });
-      if (data?.ok) { cacheEntitlement(user!.id, true); setEntitled(true); return null; }
+      if (data?.ok) { cacheEntitlement(user!.id, true); setEntitled(true); track('Unlocked'); return null; }
       const body = error && 'context' in error ? await (error.context as Response).json().catch(() => null) : data;
       return body?.error ?? 'Couldn’t check the key right now. Check your connection and try again.';
     },
