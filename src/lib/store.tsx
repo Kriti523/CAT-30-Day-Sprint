@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import type { AppState, Confidence, ErrorReason, MockLog, TestResult } from '../types';
+import type { AppState, Confidence, ErrorReason, MockLog, PracticeSession, RunningTest, TestResult } from '../types';
 import { QMAP, isCorrect } from './data';
 import { useAuth } from './auth';
 import { CloudSync, type SyncStatus } from './sync';
@@ -20,11 +20,21 @@ export function emptyState(): AppState {
   return {
     v: 1, attempts: {}, bookmarks: {}, notes: {}, confidence: {}, errors: {},
     planTasks: {}, busyDays: {}, startDate: nextMonday(), examDate: '2026-11-29', tests: [], mocks: [],
+    activeTest: null, practice: null, checklist: {},
   };
 }
 
-/** Fills in fields missing from progress saved by an older version of the app. */
-const normalize = (s?: Partial<AppState>): AppState => ({ ...emptyState(), ...s, v: 1 });
+/** Fills in fields missing from progress saved by an older version of the app, and drops a test or practice
+ *  session that refers to questions this version no longer has. */
+const normalize = (s?: Partial<AppState>): AppState => {
+  const n: AppState = { ...emptyState(), ...s, v: 1 };
+  if (n.activeTest && !n.activeTest.sections.every((x) => x.ids.every((id) => QMAP[id]))) n.activeTest = null;
+  if (n.practice) {
+    const ids = n.practice.ids.filter((id) => QMAP[id]);
+    n.practice = ids.length ? { ...n.practice, ids, index: Math.min(n.practice.index, ids.length - 1) } : null;
+  }
+  return n;
+};
 
 /** localStorage can be missing or throw (private mode, blocked storage); the app works without it. */
 function load(): { state: AppState; persistent: boolean } {
@@ -61,6 +71,9 @@ interface Store {
   setStartDate: (d: string) => void;
   saveTest: (t: TestResult) => void;
   saveMock: (m: MockLog) => void;
+  setActiveTest: (t: RunningTest | null) => void;
+  setPractice: (p: PracticeSession | null) => void;
+  toggleChecklist: (key: string) => void;
   deleteMock: (id: string) => void;
   replaceAll: (s: AppState) => void;
   reset: () => void;
@@ -138,7 +151,10 @@ function AccountStore({ uid, children }: { uid: string | null; children: ReactNo
     saveTest: (t) => update((s) => ({ ...s, tests: [...s.tests, t] })),
     saveMock: (m) => update((s) => ({ ...s, mocks: [...s.mocks.filter((x) => x.id !== m.id), m] })),
     deleteMock: (id) => update((s) => ({ ...s, mocks: s.mocks.filter((x) => x.id !== id) })),
-    replaceAll: (n) => setState({ ...emptyState(), ...n, v: 1 }),
+    setActiveTest: (t) => update((s) => ({ ...s, activeTest: t })),
+    setPractice: (p) => update((s) => ({ ...s, practice: p })),
+    toggleChecklist: (key) => update((s) => ({ ...s, checklist: { ...s.checklist, [key]: !s.checklist[key] } })),
+    replaceAll: (n) => setState(normalize(n)),
     reset: () => setState(emptyState()),
   }), [state, persistent, record, update, sync, cloud, auth]);
 

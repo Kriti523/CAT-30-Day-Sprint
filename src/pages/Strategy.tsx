@@ -2,8 +2,10 @@ import { EXAM_DAY, RULES, SECTION_PLANS, TARGETS, WORKING_PRO_TIPS } from '../da
 import { NEXT_EXAM } from '../data/research';
 import { Note, PageHead, Panel, secVar } from '../components/ui';
 import type { Section } from '../types';
+import { useStore } from '../lib/store';
 
 export default function Strategy() {
+  const { state, toggleChecklist } = useStore();
   return (
     <div>
       <PageHead eyebrow={`CAT ${NEXT_EXAM.year} · ${NEXT_EXAM.label}`} title="Exam strategy">
@@ -33,7 +35,7 @@ export default function Strategy() {
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Panel title="Rules that shape strategy"><ul className="grid list-disc gap-2 pl-5 text-[0.95rem]">{RULES.map((r) => <li key={r}>{r}</li>)}</ul></Panel>
-        <Panel title="Exam-day checklist"><ul className="grid gap-2 text-[0.95rem]">{EXAM_DAY.map((r, i) => <li key={r} className="flex gap-2"><input id={`exam-${i}`} type="checkbox" className="mt-1.5" aria-label={r} /><span>{r}</span></li>)}</ul>
+        <Panel title="Exam-day checklist"><ul className="grid gap-2 text-[0.95rem]">{EXAM_DAY.map((r, i) => <li key={r} className="flex gap-2"><input id={`exam-${i}`} type="checkbox" className="mt-1.5" aria-label={r} checked={!!state.checklist[`exam-${i}`]} onChange={() => toggleChecklist(`exam-${i}`)} /><span>{r}</span></li>)}</ul>
           <p className="mt-3 text-xs text-muted">Always follow the instructions printed on your admit card and on iimcat.ac.in; they override anything here.</p></Panel>
         <Panel title="For working professionals"><ul className="grid list-disc gap-2 pl-5 text-[0.95rem]">{WORKING_PRO_TIPS.map((r) => <li key={r}>{r}</li>)}</ul></Panel>
       </div>

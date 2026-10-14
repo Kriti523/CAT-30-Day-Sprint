@@ -2,80 +2,70 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { QMAP, SETMAP, fmtTime, isCorrect } from '../lib/data';
 import { useNav } from '../lib/nav';
 import { useStore } from '../lib/store';
-import { SECTION_MINUTES, buildSection, marksFor, scoreSection } from '../lib/tests';
-import { SECTIONS, type Section, type TestResult } from '../types';
+import { SECTION_MINUTES, buildSection, marksFor, scoreSection, sectionLeft } from '../lib/tests';
+import { SECTIONS, type RunningTest, type Section, type TestResult } from '../types';
 import { AnswerInput, RichText, SetContext, Solution } from '../components/QuestionView';
+import { Calculator } from '../components/Calculator';
 import { LineChart } from '../components/charts';
 import { Note, PageHead, Panel, StatusPill, secVar } from '../components/ui';
 
-interface Running {
-  kind: 'sectional' | 'full';
-  sections: { s: Section; ids: string[] }[];
-  cur: number;           // section index
-  qi: number;            // question index inside section
-  answers: Record<string, string>;
-  marked: Record<string, boolean>;
-  spent: Record<string, number>;
-  sectionStart: number;
-  startedAt: number;
-}
-
 export default function Tests() {
   const store = useStore();
-  const { state } = store;
+  const { state, setActiveTest } = store;
+  const run = state.activeTest;
   const nav = useNav();
-  const [run, setRun] = useState<Running | null>(null);
   const [result, setResult] = useState<TestResult | null>(null);
 
   const start = (which: Section | 'FULL') => {
     const secs = which === 'FULL' ? SECTIONS : [which];
+    const sections = secs.map((s) => ({ s, ids: buildSection(s, state) }));
     setResult(null);
-    setRun({
-      kind: which === 'FULL' ? 'full' : 'sectional',
-      sections: secs.map((s) => ({ s, ids: buildSection(s, state) })),
-      cur: 0, qi: 0, answers: {}, marked: {}, spent: {}, sectionStart: Date.now(), startedAt: Date.now(),
+    setActiveTest({
+      kind: which === 'FULL' ? 'full' : 'sectional', sections,
+      cur: 0, qi: 0, answers: {}, marked: {}, visited: { [sections[0].ids[0]]: true }, spent: {}, sectionStart: Date.now(), startedAt: Date.now(),
     });
   };
 
   useEffect(() => {
-    if (nav.pendingTest && !run) { start(nav.pendingTest); nav.clearPendingTest(); }
+    // A plan block opens a test; a test already running takes priority.
+    if (nav.pendingTest) { if (!run) start(nav.pendingTest); nav.clearPendingTest(); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nav.pendingTest]);
 
-  const finish = (r: Running) => {
+  const finish = (r: RunningTest) => {
     const qids = r.sections.flatMap((x) => x.ids);
     const perSection: TestResult['perSection'] = {};
     for (const x of r.sections) perSection[x.s] = scoreSection(x.ids, r.answers);
     for (const id of qids) if (r.answers[id] !== undefined && r.answers[id] !== '') store.record(id, r.answers[id], r.spent[id] ?? 0);
     const t: TestResult = {
       id: `T${Date.now()}`, kind: r.kind, sections: r.sections.map((x) => x.s), startedAt: r.startedAt, finishedAt: Date.now(),
-      qids, answers: r.answers, score: Object.values(perSection).reduce((a, b) => a + b.score, 0), perSection,
+      qids, answers: r.answers, spent: r.spent, score: Object.values(perSection).reduce((a, b) => a + b.score, 0), perSection,
     };
     store.saveTest(t);
-    setRun(null);
+    setActiveTest(null);
     setResult(t);
   };
 
-  if (run) return <Runner run={run} setRun={setRun} onFinish={finish} />;
+  if (run) return <Runner run={run} setRun={setActiveTest} onFinish={finish} />;
   if (result) return <Result t={result} onClose={() => setResult(null)} />;
 
   const history = state.tests.slice(-12);
   return (
     <div>
       <PageHead eyebrow="40 minutes per section · +3 / −1 · TITA has no negative" title="Sectional tests & in-app mock">
-        Tests are built CAT-style from the bank and prefer questions you have not attempted: VARC = 4 passages + 8 VA (24 Qs), DILR = 4 sets (20 Qs), QA = 22 Qs in CAT proportions. Solutions stay hidden until you submit.
+        Tests follow the CAT 2024–25 pattern and prefer questions you have not attempted: VARC = 4 passages + 8 VA (24 Qs), DILR = 5 sets (22 Qs), QA = 22 Qs in CAT proportions. As in the exam you get an on-screen calculator and keypad, and solutions stay hidden until you submit. If you leave or reload, the test waits for you, but its clock keeps running.
       </PageHead>
       <div className="grid gap-4 md:grid-cols-4">
         {SECTIONS.map((s) => (
           <Panel key={s}>
             <div className="flex items-center gap-2"><span className="dot" style={{ background: secVar(s) }} /><span className="label">{s} sectional</span></div>
-            <p className="mt-1 text-sm text-muted">{s === 'VARC' ? '4 RC passages + 8 VA · 24 Qs' : s === 'DILR' ? '4 sets · 20 Qs · choose wisely' : '22 Qs · 8 arith, 7 algebra, 3 geo, 2 numbers, 2 modern'}</p>
+            <p className="mt-1 text-sm text-muted">{s === 'VARC' ? '4 RC passages + 8 VA · 24 Qs' : s === 'DILR' ? '5 sets · 22 Qs · choose wisely' : '22 Qs · 8 arith, 7 algebra, 3 geo, 2 numbers, 2 modern'}</p>
             <button className="btn btn-primary mt-3" onClick={() => start(s)}>Start {SECTION_MINUTES}-min test</button>
           </Panel>
         ))}
         <Panel>
           <div className="label">Full in-app mock</div>
-          <p className="mt-1 text-sm text-muted">VARC → DILR → QA, 40 min each, no switching back. 66 Qs.</p>
+          <p className="mt-1 text-sm text-muted">VARC → DILR → QA, 40 min each, no switching back. 68 Qs · 204 marks.</p>
           <button className="btn btn-primary mt-3" onClick={() => start('FULL')}>Start 120-min mock</button>
         </Panel>
       </div>
@@ -113,38 +103,57 @@ export default function Tests() {
   );
 }
 
-function Runner({ run, setRun, onFinish }: { run: Running; setRun: (r: Running) => void; onFinish: (r: Running) => void }) {
+/** CAT palette states: not visited, not answered, answered, marked for review, answered and marked. */
+function paletteState(r: RunningTest, id: string) {
+  const ans = r.answers[id] !== undefined && r.answers[id] !== '';
+  if (r.marked[id]) return ans ? 'answered-marked' : 'marked';
+  if (ans) return 'answered';
+  return r.visited[id] ? 'not-answered' : 'not-visited';
+}
+const PALETTE_LEGEND: [string, string][] = [
+  ['not-visited', 'Not visited'], ['not-answered', 'Not answered'], ['answered', 'Answered'],
+  ['marked', 'Marked for review'], ['answered-marked', 'Answered & marked (counts as answered)'],
+];
+
+function Runner({ run, setRun, onFinish }: { run: RunningTest; setRun: (r: RunningTest | null) => void; onFinish: (r: RunningTest) => void }) {
   const sec = run.sections[run.cur];
   const id = sec.ids[run.qi];
   const q = QMAP[id];
   const set = q.setId ? SETMAP[q.setId] : undefined;
   const [now, setNow] = useState(Date.now());
-  const [confirm, setConfirm] = useState(false);
+  const [confirm, setConfirm] = useState<'submit' | 'discard' | null>(null);
+  const [calc, setCalc] = useState(false);
   const qStart = useRef(Date.now());
   const runRef = useRef(run);
   runRef.current = run;
 
-  const left = SECTION_MINUTES * 60 - Math.floor((now - run.sectionStart) / 1000);
+  const left = sectionLeft(run, now);
 
-  const withSpent = (r: Running): Running => {
+  const withSpent = (r: RunningTest): RunningTest => {
     const cur = r.sections[r.cur].ids[r.qi];
     const add = (Date.now() - qStart.current) / 1000;
     qStart.current = Date.now();
     return { ...r, spent: { ...r.spent, [cur]: (r.spent[cur] ?? 0) + add } };
   };
-  const goTo = (qi: number) => setRun({ ...withSpent(run), qi });
-  const submitSection = (r: Running) => {
+  const goTo = (qi: number) => {
+    const next = sec.ids[qi];
+    setRun({ ...withSpent(run), qi, visited: { ...run.visited, [next]: true } });
+  };
+  const submitSection = (r: RunningTest) => {
     const r2 = withSpent(r);
-    setConfirm(false);
-    if (r2.cur < r2.sections.length - 1) setRun({ ...r2, cur: r2.cur + 1, qi: 0, sectionStart: Date.now() });
-    else onFinish(r2);
+    setConfirm(null);
+    if (r2.cur < r2.sections.length - 1) {
+      const first = r2.sections[r2.cur + 1].ids[0];
+      setRun({ ...r2, cur: r2.cur + 1, qi: 0, sectionStart: Date.now(), visited: { ...r2.visited, [first]: true } });
+    } else onFinish(r2);
   };
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, []);
-  useEffect(() => { if (left <= 0) submitSection(runRef.current); /* auto-submit at 0 */ // eslint-disable-next-line react-hooks/exhaustive-deps
+  // Time up (also when it ran out while you were away): the section is submitted as it stands.
+  useEffect(() => { if (left <= 0) submitSection(runRef.current); // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [left <= 0]);
 
   const answered = sec.ids.filter((x) => run.answers[x] !== undefined && run.answers[x] !== '').length;
@@ -156,31 +165,32 @@ function Runner({ run, setRun, onFinish }: { run: Running; setRun: (r: Running) 
         <div className="flex items-center gap-2">
           <span className="dot" style={{ background: secVar(sec.s) }} />
           <strong>{sec.s}</strong>
-          <span className="text-sm text-muted">{run.kind === 'full' ? `Section ${run.cur + 1} of 3` : 'Sectional'} · {answered}/{sec.ids.length} answered</span>
+          <span className="text-sm text-muted"><span className="hidden sm:inline">{run.kind === 'full' ? `Section ${run.cur + 1} of 3` : 'Sectional'} · </span>{answered}/{sec.ids.length} answered</span>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="num rounded-md px-2 py-0.5 text-lg font-semibold" aria-live="polite"
-            style={{ background: left < 300 ? 'var(--bad-soft)' : 'var(--sunk)', color: left < 300 ? 'var(--bad)' : 'var(--ink)' }}>{fmtTime(left)}</span>
-          {confirm ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="num rounded-md px-2 py-0.5 text-lg font-semibold" aria-live="polite" aria-label="Time left in this section"
+            style={{ background: left < 300 ? 'var(--bad-soft)' : 'var(--sunk)', color: left < 300 ? 'var(--bad)' : 'var(--ink)' }}>{fmtTime(Math.max(0, left))}</span>
+          <button className="btn btn-sm" aria-pressed={calc} onClick={() => setCalc((c) => !c)}>Calculator</button>
+          {confirm === 'submit' ? (
             <>
               <span className="text-sm">Submit {sec.s}? You can’t return.</span>
               <button className="btn btn-sm btn-primary" onClick={() => submitSection(run)}>Yes, submit</button>
-              <button className="btn btn-sm" onClick={() => setConfirm(false)}>Cancel</button>
+              <button className="btn btn-sm" onClick={() => setConfirm(null)}>Cancel</button>
             </>
-          ) : <button className="btn btn-sm" onClick={() => setConfirm(true)}>Submit section</button>}
+          ) : <button className="btn btn-sm" onClick={() => setConfirm('submit')}>Submit section</button>}
         </div>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[1fr_220px]">
         <div className={set ? 'grid gap-4 xl:grid-cols-2' : ''}>
-          {set && <div className="panel p-4 sm:p-5 xl:max-h-[75vh] xl:overflow-y-auto"><SetContext set={set} /></div>}
+          {set && <div className="panel p-4 sm:p-5 xl:max-h-[75vh] xl:overflow-y-auto"><SetContext set={set} exam /></div>}
           <div className="panel p-4 sm:p-5">
             <div className="mb-2 flex flex-wrap items-center gap-2 text-sm">
               <span className="chip mono">Q{run.qi + 1}</span><span className="chip">{q.type}</span>
               <span className="chip">{q.type === 'MCQ' ? '+3 / −1' : '+3 / 0'}</span>
             </div>
             <div className="mb-4"><RichText text={q.text} /></div>
-            <AnswerInput q={q} value={run.answers[id] ?? ''} onChange={(v) => setRun({ ...run, answers: { ...run.answers, [id]: v } })} />
+            <AnswerInput q={q} exam value={run.answers[id] ?? ''} onChange={(v) => setRun({ ...run, answers: { ...run.answers, [id]: v } })} />
             <div className="mt-4 flex flex-wrap gap-2">
               <button className="btn" disabled={run.qi === 0} onClick={() => goTo(run.qi - 1)}>← Previous</button>
               <button className="btn btn-primary" disabled={run.qi === sec.ids.length - 1} onClick={() => goTo(run.qi + 1)}>Save & next →</button>
@@ -191,23 +201,32 @@ function Runner({ run, setRun, onFinish }: { run: Running; setRun: (r: Running) 
         </div>
         <aside className="panel h-fit p-3">
           <div className="label mb-2">Question palette</div>
-          <div className="grid grid-cols-6 gap-1 lg:grid-cols-5">
+          <div className="grid grid-cols-6 gap-1.5 lg:grid-cols-5">
             {sec.ids.map((x, i) => {
-              const ans = run.answers[x] !== undefined && run.answers[x] !== '';
-              const bg = run.marked[x] ? 'var(--warn-soft)' : ans ? 'var(--good-soft)' : 'var(--surface)';
+              const st = paletteState(run, x);
               return (
-                <button key={x} onClick={() => goTo(i)} className="num rounded border py-1 text-xs"
-                  style={{ background: bg, borderColor: i === run.qi ? 'var(--accent)' : 'var(--line)', borderWidth: i === run.qi ? 2 : 1 }}
-                  aria-label={`Question ${i + 1}${ans ? ', answered' : ''}${run.marked[x] ? ', marked' : ''}`}>{i + 1}</button>
+                <button key={x} onClick={() => goTo(i)} className={`pal ${st} ${i === run.qi ? 'current' : ''}`}
+                  aria-label={`Question ${i + 1}: ${PALETTE_LEGEND.find(([k]) => k === st)![1].toLowerCase()}`} aria-current={i === run.qi}>{i + 1}</button>
               );
             })}
           </div>
-          <div className="mt-3 grid gap-1 text-xs text-muted">
-            <span><span className="inline-block h-2.5 w-2.5 rounded-sm align-middle" style={{ background: 'var(--good-soft)', border: '1px solid var(--line)' }} /> answered</span>
-            <span><span className="inline-block h-2.5 w-2.5 rounded-sm align-middle" style={{ background: 'var(--warn-soft)', border: '1px solid var(--line)' }} /> marked for review</span>
+          <ul className="mt-3 grid gap-1.5 text-xs text-muted">
+            {PALETTE_LEGEND.map(([k, label]) => <li key={k} className="flex items-center gap-2"><span className={`pal ${k} inline-block w-6 text-center`} aria-hidden>&nbsp;</span>{label}</li>)}
+          </ul>
+          <div className="mt-3 border-t pt-3 text-sm" style={{ borderColor: 'var(--line)' }}>
+            {confirm === 'discard' ? (
+              <div className="grid gap-2">
+                <span>Discard this test? Answers won’t be saved.</span>
+                <span className="flex gap-2">
+                  <button className="btn btn-sm" style={{ background: 'var(--bad)', color: '#fff', borderColor: 'var(--bad)' }} onClick={() => setRun(null)}>Discard</button>
+                  <button className="btn btn-sm" onClick={() => setConfirm(null)}>Keep going</button>
+                </span>
+              </div>
+            ) : <button className="btn btn-sm btn-ghost -ml-2" onClick={() => setConfirm('discard')}>Discard test</button>}
           </div>
         </aside>
       </div>
+      {calc && <Calculator onClose={() => setCalc(false)} />}
     </div>
   );
 }

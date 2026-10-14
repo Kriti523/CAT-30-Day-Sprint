@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { NavCtx, type Nav, type Page, type Session } from './lib/nav';
+import { NavCtx, type Nav, type Page } from './lib/nav';
 import { useStore } from './lib/store';
 import { useAuth } from './lib/auth';
 import type { SyncStatus } from './lib/sync';
+import { sectionLeft } from './lib/tests';
+import { fmtTime } from './lib/data';
+import type { RunningTest } from './types';
 import type { Section } from './types';
 import Dashboard from './pages/Dashboard';
 import PlanPage from './pages/Plan';
@@ -63,12 +66,11 @@ function useWide() {
 }
 
 export default function App() {
-  const { persistent, sync, retrySync, signOut } = useStore();
+  const { state, persistent, sync, retrySync, signOut, setPractice } = useStore();
   const auth = useAuth();
   const [page, setPage] = useState<Page>(initialPage);
   const [bankSection, setBankSection] = useState<Section>('QA');
   const [bankQuery, setBankQuery] = useState('');
-  const [session, setSession] = useState<Session | null>(null);
   const [pendingTest, setPendingTest] = useState<Section | 'FULL' | null>(null);
   const wide = useWide();
   // Sidebar on wide screens: open by default, remembered. Drawer on narrow screens: closed by default.
@@ -95,20 +97,25 @@ export default function App() {
     if (opts?.bankQuery !== undefined) setBankQuery(opts.bankQuery);
     if (opts?.testSection) setPendingTest(opts.testSection);
     setPage(p);
-    try { history.replaceState(null, '', `#${p}`); } catch { /* sandboxed frames may refuse */ }
+    // A history entry per page, so Back (and Android's back gesture) moves between pages instead of leaving the app.
+    try {
+      if (window.location.hash.replace('#', '') === p) history.replaceState(null, '', `#${p}`);
+      else history.pushState(null, '', `#${p}`);
+    } catch { /* sandboxed frames may refuse */ }
     window.scrollTo({ top: 0 });
   }, []);
 
   const startSession = useCallback((ids: string[], title: string, timed = false) => {
     if (!ids.length) return;
-    setSession({ ids, title, timed, index: 0 });
+    setPractice({ ids, title, timed, index: 0, startedAt: Date.now() });
     go('practice');
-  }, [go]);
+  }, [go, setPractice]);
 
   useEffect(() => {
-    const onHash = () => { const h = window.location.hash.replace('#', ''); if (PAGES.has(h)) setPage(h as Page); };
-    window.addEventListener('hashchange', onHash);
-    return () => window.removeEventListener('hashchange', onHash);
+    const onNav = () => { const h = window.location.hash.replace('#', ''); if (PAGES.has(h)) setPage(h as Page); };
+    window.addEventListener('hashchange', onNav);
+    window.addEventListener('popstate', onNav);
+    return () => { window.removeEventListener('hashchange', onNav); window.removeEventListener('popstate', onNav); };
   }, []);
 
   const nav = useMemo<Nav>(() => ({ page, go, startSession, bankSection, bankQuery, pendingTest, clearPendingTest: () => setPendingTest(null) }),
@@ -190,10 +197,11 @@ export default function App() {
                 </div>
               ) : (
                 <>
+                  {state.activeTest && page !== 'tests' && <TestBanner t={state.activeTest} onResume={() => go('tests')} />}
                   {page === 'dashboard' && <Dashboard />}
                   {page === 'plan' && <PlanPage />}
                   {page === 'bank' && <Bank />}
-                  {page === 'practice' && <Practice session={session} setSession={setSession} />}
+                  {page === 'practice' && <Practice />}
                   {page === 'tests' && <Tests />}
                   {page === 'errors' && <Errors />}
                   {page === 'trends' && <Trends />}
@@ -211,5 +219,20 @@ export default function App() {
         </div>
       </div>
     </NavCtx.Provider>
+  );
+}
+
+/** Shown on other pages while a test is running, so leaving it is never a dead end. */
+function TestBanner({ t, onResume }: { t: RunningTest; onResume: () => void }) {
+  const [, tick] = useState(0);
+  useEffect(() => { const i = setInterval(() => tick((n) => n + 1), 1000); return () => clearInterval(i); }, []);
+  const left = sectionLeft(t);
+  const sec = t.sections[t.cur].s;
+  return (
+    <div className="no-print mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg px-3 py-2" role="status"
+      style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}>
+      <span className="text-sm"><strong>{t.kind === 'full' ? 'Mock' : 'Sectional'} in progress</strong> · {sec} · {left > 0 ? <span className="num">{fmtTime(left)} left</span> : 'time is up, open it to continue'}. The clock keeps running.</span>
+      <button className="btn btn-sm btn-primary" onClick={onResume}>Resume test</button>
+    </div>
   );
 }

@@ -1,25 +1,25 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { QMAP, fmtTime } from '../lib/data';
-import { useNav, type Session } from '../lib/nav';
+import { useNav } from '../lib/nav';
 import { useStore } from '../lib/store';
 import { QuestionView } from '../components/QuestionView';
 import { PageHead } from '../components/ui';
 
-export default function Practice({ session, setSession }: { session: Session | null; setSession: (s: Session | null) => void }) {
+export default function Practice() {
   const { go } = useNav();
-  const { state } = useStore();
-  const started = useRef(Date.now());
+  const { state, setPractice: setSession } = useStore();
+  const session = state.practice;
+  const started = session?.startedAt ?? 0;
   const [left, setLeft] = useState(0);
-  const budget = useMemo(() => (session ? session.ids.reduce((a, id) => a + (QMAP[id]?.time ?? 0), 0) : 0), [session]);
+  const budget = useMemo(() => (session ? session.ids.reduce((a, id) => a + (QMAP[id]?.time ?? 0), 0) : 0), [session?.ids]);
 
-  useEffect(() => { started.current = Date.now(); }, [session?.ids.join(',')]);
   useEffect(() => {
     if (!session?.timed) return;
-    const tick = () => setLeft(budget - Math.floor((Date.now() - started.current) / 1000));
+    const tick = () => setLeft(budget - Math.floor((Date.now() - started) / 1000));
     tick();
     const t = setInterval(tick, 1000);
     return () => clearInterval(t);
-  }, [session?.timed, budget, session?.ids.join(',')]);
+  }, [session?.timed, budget, started]);
 
   if (!session) {
     return (
@@ -32,7 +32,7 @@ export default function Practice({ session, setSession }: { session: Session | n
 
   const q = QMAP[session.ids[session.index]];
   const move = (d: number) => setSession({ ...session, index: Math.max(0, Math.min(session.ids.length - 1, session.index + d)) });
-  const sessionAnswered = session.ids.filter((id) => (state.attempts[id]?.at ?? 0) >= started.current);
+  const sessionAnswered = session.ids.filter((id) => (state.attempts[id]?.at ?? 0) >= started);
   const right = sessionAnswered.filter((id) => state.attempts[id].correct).length;
   const atEnd = session.index === session.ids.length - 1;
 
@@ -57,7 +57,7 @@ export default function Practice({ session, setSession }: { session: Session | n
       <div className="no-print scroll-x mb-4 flex gap-1 pb-1" aria-label="Questions in this session">
         {session.ids.map((id, i) => {
           const a = state.attempts[id];
-          const fresh = a && a.at >= started.current;
+          const fresh = a && a.at >= started;
           const bg = fresh ? (a.correct ? 'var(--good-soft)' : 'var(--bad-soft)') : 'var(--surface)';
           return (
             <button key={id + i} onClick={() => setSession({ ...session, index: i })} aria-current={i === session.index}
@@ -74,7 +74,7 @@ export default function Practice({ session, setSession }: { session: Session | n
 
       {atEnd && sessionAnswered.length > 0 && (
         <div className="panel mt-4 flex flex-wrap items-center justify-between gap-3 p-4">
-          <div><div className="label">Session summary</div><div className="num">{right}/{sessionAnswered.length} correct · {fmtTime((Date.now() - started.current) / 1000)} elapsed</div></div>
+          <div><div className="label">Session summary</div><div className="num">{right}/{sessionAnswered.length} correct · {fmtTime((Date.now() - started) / 1000)} elapsed</div></div>
           <div className="flex gap-2">
             <button className="btn" onClick={() => go('errors')}>Review error log</button>
             <button className="btn btn-primary" onClick={() => { setSession(null); go('dashboard'); }}>Finish</button>

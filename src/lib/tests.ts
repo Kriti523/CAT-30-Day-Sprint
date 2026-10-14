@@ -1,7 +1,9 @@
-import type { AppState, Question, Section } from '../types';
+import type { AppState, Question, RunningTest, Section } from '../types';
 import { QMAP, QUESTIONS, SETS, isCorrect, setQuestions, shuffle } from './data';
 
 export const SECTION_MINUTES = 40;
+/** Questions per DILR set in a CAT-shaped section (22 in all). */
+const DILR_SIZES = [5, 5, 4, 4, 4];
 
 const unseenFirst = <T,>(items: T[], unseen: (t: T) => number, seed: number) =>
   shuffle(items, seed).sort((a, b) => unseen(b) - unseen(a));
@@ -18,9 +20,10 @@ export function buildSection(section: Section, state: AppState, seed = Date.now(
     return [...passages.flatMap((p) => setQuestions(p.id).map((q) => q.id)), ...vaPick.map((q) => q.id)];
   }
   if (section === 'DILR') {
+    // CAT 2024–25: five sets of 4–5 questions, 22 in all. The bank's sets have 5 questions, so three are cut to 4.
     const sets = unseenFirst(SETS.filter((s) => s.section === 'DILR'),
-      (s) => setQuestions(s.id).filter((q) => !state.attempts[q.id]).length, seed).slice(0, 4);
-    return sets.flatMap((s) => setQuestions(s.id).map((q) => q.id));
+      (s) => setQuestions(s.id).filter((q) => !state.attempts[q.id]).length, seed).slice(0, DILR_SIZES.length);
+    return sets.flatMap((s, i) => setQuestions(s.id).slice(0, DILR_SIZES[i]).map((q) => q.id));
   }
   const quota: Record<string, number> = { Arithmetic: 8, Algebra: 7, 'Geometry & Mensuration': 3, 'Number Systems': 2, 'Modern Math': 2 };
   const qa = QUESTIONS.filter((q) => q.section === 'QA');
@@ -45,3 +48,6 @@ export function scoreSection(ids: string[], answers: Record<string, string>) {
   }
   return { attempted, correct, wrong, score, total: ids.length };
 }
+
+/** Seconds left in the running section (negative once time is up). */
+export const sectionLeft = (r: RunningTest, now = Date.now()) => SECTION_MINUTES * 60 - Math.floor((now - r.sectionStart) / 1000);

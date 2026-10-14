@@ -9,6 +9,7 @@
   --accent: #2446a8; --accent-ink: #ffffff; --accent-soft: #e3e8f7;
   --good: #1c7a4a; --good-soft: #e0f1e6; --bad: #b3322b; --bad-soft: #f7e2df; --warn: #8f5d00; --warn-soft: #f6ecd6;
   --varc: #2a78d6; --dilr: #eb6834; --qa: #1baf7a; --mark: #ffe27a;
+  --review: #6b3fa0; --review-soft: #ece3f7;
   --seq-1: #b9c7ef; --seq-2: #7d95dc; --seq-3: #4462c0; --seq-4: #1f3a8f;
   --cat-1: #2a78d6; --cat-2: #eb6834; --cat-3: #1baf7a; --cat-4: #eda100; --cat-5: #e87ba4;
   --shadow: 0 1px 2px rgb(20 30 25 / 0.06), 0 4px 16px rgb(20 30 25 / 0.05);
@@ -21,6 +22,7 @@
     --accent: #93a9ff; --accent-ink: #0c1230; --accent-soft: #1d2544;
     --good: #52c58f; --good-soft: #14281e; --bad: #f28075; --bad-soft: #321a18; --warn: #e3ad45; --warn-soft: #2d2412;
     --varc: #3987e5; --dilr: #d95926; --qa: #199e70; --mark: #5c4d10;
+    --review: #c4a2f0; --review-soft: #2b2140;
     --seq-1: #26335e; --seq-2: #3b53a3; --seq-3: #6f8ae6; --seq-4: #b3c3ff;
     --cat-1: #3987e5; --cat-2: #d95926; --cat-3: #199e70; --cat-4: #c98500; --cat-5: #d55181;
     --shadow: 0 1px 2px rgb(0 0 0 / 0.4);
@@ -33,6 +35,7 @@
   --accent: #93a9ff; --accent-ink: #0c1230; --accent-soft: #1d2544;
   --good: #52c58f; --good-soft: #14281e; --bad: #f28075; --bad-soft: #321a18; --warn: #e3ad45; --warn-soft: #2d2412;
   --varc: #3987e5; --dilr: #d95926; --qa: #199e70; --mark: #5c4d10;
+  --review: #c4a2f0; --review-soft: #2b2140;
   --seq-1: #26335e; --seq-2: #3b53a3; --seq-3: #6f8ae6; --seq-4: #b3c3ff;
   --cat-1: #3987e5; --cat-2: #d95926; --cat-3: #199e70; --cat-4: #c98500; --cat-5: #d55181;
   --shadow: 0 1px 2px rgb(0 0 0 / 0.4);
@@ -83,6 +86,27 @@ table.data { border-collapse: collapse; width: 100%; font-size: .9rem; }
 table.data th, table.data td { border-bottom: 1px solid var(--line); padding: .4rem .6rem; text-align: left; vertical-align: top; }
 table.data th { font-weight: 600; color: var(--muted); font-size: .8rem; background: var(--sunk); }
 table.data td.n, table.data th.n { text-align: right; font-variant-numeric: tabular-nums; }
+/* CAT tools: calculator, answer keypad, question palette */
+.calc { position: fixed; z-index: 35; width: min(300px, calc(100vw - 32px)); padding: 12px;
+  right: max(16px, env(safe-area-inset-right, 0px)); bottom: max(16px, env(safe-area-inset-bottom, 0px)); }
+.calc-screen { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; min-height: 4.2rem; padding: .5rem .7rem; margin-bottom: 8px;
+  border: 1px solid var(--line); border-radius: 8px; background: var(--sunk); overflow: hidden; }
+.calc-keys { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 5px; }
+.calc-key { min-height: 2.4rem; border-radius: 7px; border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+  font: 600 .9rem "JetBrains Mono", ui-monospace, monospace; cursor: pointer; }
+.calc-key:hover { border-color: var(--accent); }
+.calc-key:disabled { opacity: .5; cursor: not-allowed; }
+.calc-key.is-digit { background: var(--sunk); }
+.calc-key.is-eq { grid-row: span 2; background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.calc-key.is-zero { grid-column: span 2; }
+.keypad { display: grid; grid-template-columns: repeat(3, 3.2rem); gap: 5px; }
+.keypad-wide { grid-column: span 2; }
+.pal { position: relative; font: 600 .78rem "JetBrains Mono", ui-monospace, monospace; padding: .3rem 0; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; border-radius: 4px; }
+.pal.not-answered { background: var(--bad-soft); border-color: var(--bad); color: var(--bad); border-radius: 0 0 8px 8px; }
+.pal.answered { background: var(--good-soft); border-color: var(--good); color: var(--good); border-radius: 8px 8px 0 0; }
+.pal.marked, .pal.answered-marked { background: var(--review-soft); border-color: var(--review); color: var(--review); border-radius: 999px; }
+.pal.answered-marked::after { content: ""; position: absolute; right: 2px; bottom: 2px; width: 7px; height: 7px; border-radius: 999px; background: var(--good); }
+.pal.current { outline: 2px solid var(--accent); outline-offset: 1px; }
 .bar-track { background: var(--sunk); border-radius: 4px; height: .55rem; overflow: hidden; }
 .bar-fill { height: 100%; border-radius: 4px; }
 

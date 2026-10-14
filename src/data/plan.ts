@@ -243,7 +243,7 @@ export const PLAN: PlanDay[] = [
     fallback: 'Formula sheet reading, 30 min + 15 min queue.' },
   { day: 23, week: 4, kind: 'Weekday', minutes: 120, focus: 'DILR sectional (in-app)',
     blocks: [
-      { min: 40, section: 'DILR', mode: 'Mock', title: 'DILR sectional – 4 sets, 40 min', detail: 'Scan first; commit to your best two, then a third if time allows.', testSection: 'DILR' },
+      { min: 40, section: 'DILR', mode: 'Mock', title: 'DILR sectional – 5 sets, 40 min', detail: 'Scan first; commit to your best two, then a third if time allows.', testSection: 'DILR' },
       { min: 50, section: 'DILR', mode: 'Review', title: 'Analysis', detail: '' },
       { min: 30, section: 'All', mode: 'Review', title: 'Queue', detail: '' },
     ],

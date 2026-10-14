@@ -53,7 +53,9 @@ export function RichText({ text, evidence = [] }: { text: string; evidence?: str
   );
 }
 
-export function SetContext({ set, evidence = [] }: { set: QSet; evidence?: string[] }) {
+/** `exam` hides a table that only repeats a chart's numbers, so the chart has to be read, as in the CAT. */
+export function SetContext({ set, evidence = [], exam = false }: { set: QSet; evidence?: string[]; exam?: boolean }) {
+  const tables = exam && set.chart ? set.tables?.filter((t) => !/^data behind the chart/i.test(t.caption)) : set.tables;
   return (
     <div>
       <div className="mb-2 flex flex-wrap items-center gap-2">
@@ -66,7 +68,7 @@ export function SetContext({ set, evidence = [] }: { set: QSet; evidence?: strin
       {set.chart && set.chart.type === 'bar' && (
         <figure className="my-4">
           <figcaption className="mb-1 text-sm font-semibold">{set.chart.title}</figcaption>
-          <GroupedBars categories={set.chart.labels} ariaLabel={set.chart.title}
+          <GroupedBars categories={set.chart.labels} ariaLabel={set.chart.title} showValues
             series={set.chart.series.map((s, i) => ({ ...s, color: CAT[i] }))} />
         </figure>
       )}
@@ -75,7 +77,7 @@ export function SetContext({ set, evidence = [] }: { set: QSet; evidence?: strin
           {set.chart.series.map((s) => <Donut key={s.name} labels={set.chart!.labels} values={s.values} title={s.name} />)}
         </div>
       )}
-      {set.tables?.map((t) => (
+      {tables?.map((t) => (
         <div key={t.caption} className="my-3">
           <div className="label mb-1">{t.caption}</div>
           <div className="scroll-x">
@@ -161,7 +163,29 @@ export function Solution({ q, given }: { q: Question; given?: string }) {
 }
 
 /* ---------------- answer input ---------------- */
-export function AnswerInput({ q, value, onChange, locked, reveal }: { q: Question; value: string; onChange: (v: string) => void; locked?: boolean; reveal?: boolean }) {
+const TOUCH = typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: coarse)').matches;
+
+/** The CAT's on-screen keypad for typed answers. */
+function Keypad({ value, onChange, disabled }: { value: string; onChange: (v: string) => void; disabled?: boolean }) {
+  const press = (k: string) => {
+    if (k === 'back') onChange(value.slice(0, -1));
+    else if (k === 'clear') onChange('');
+    else if (k === '-') onChange(value.startsWith('-') ? value.slice(1) : '-' + value);
+    else if (k === '.' && value.includes('.')) return;
+    else if (value.length < 12) onChange(value + k);
+  };
+  const keys = ['7', '8', '9', '4', '5', '6', '1', '2', '3', '0', '.', '-'];
+  return (
+    <div className="keypad" role="group" aria-label="Answer keypad">
+      {keys.map((k) => <button key={k} type="button" className="calc-key is-digit" disabled={disabled} onClick={() => press(k)} aria-label={k === '-' ? 'Minus sign' : k === '.' ? 'Decimal point' : k}>{k === '-' ? '−' : k}</button>)}
+      <button type="button" className="calc-key" disabled={disabled} onClick={() => press('back')} aria-label="Backspace">⌫</button>
+      <button type="button" className="calc-key keypad-wide" disabled={disabled} onClick={() => press('clear')}>Clear</button>
+    </div>
+  );
+}
+
+/** `exam`: typed answers come only from the on-screen keypad, as in the CAT. */
+export function AnswerInput({ q, value, onChange, locked, reveal, exam = false }: { q: Question; value: string; onChange: (v: string) => void; locked?: boolean; reveal?: boolean; exam?: boolean }) {
   if (q.type === 'MCQ' && q.options) {
     return (
       <div className="grid gap-2" role="radiogroup" aria-label="Options">
@@ -177,12 +201,17 @@ export function AnswerInput({ q, value, onChange, locked, reveal }: { q: Questio
       </div>
     );
   }
+  // Phones get the keypad instead of the system keyboard, whose number pad has no minus sign on iOS.
+  const pad = !locked && (exam || TOUCH);
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <label className="label" htmlFor={`tita-${q.id}`}>Type your answer</label>
-      <input id={`tita-${q.id}`} className="field num" style={{ maxWidth: '14rem' }} inputMode="decimal" autoComplete="off"
-        value={value} disabled={locked} onChange={(e) => onChange(e.target.value)} placeholder={q.subtopic === 'Para jumble' ? 'e.g. 2413' : 'Number'} />
-      <span className="text-xs text-muted">TITA · no negative marking</span>
+    <div className="grid gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="label" htmlFor={`tita-${q.id}`}>{pad ? 'Your answer' : 'Type your answer'}</label>
+        <input id={`tita-${q.id}`} className="field num" style={{ maxWidth: '14rem' }} inputMode="decimal" autoComplete="off" readOnly={pad}
+          value={value} disabled={locked} onChange={(e) => onChange(e.target.value)} placeholder={q.subtopic === 'Para jumble' ? 'e.g. 2413' : 'Number'} />
+        <span className="text-xs text-muted">TITA · no negative marking</span>
+      </div>
+      {pad && <Keypad value={value} onChange={onChange} />}
     </div>
   );
 }

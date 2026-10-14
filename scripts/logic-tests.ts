@@ -42,8 +42,9 @@ ok(expandRefs(['Q001-Q011']).length === 11 && expandRefs(['D07']).length === 5 &
 // 4. tests
 const st = emptyState();
 const v = buildSection('VARC', st, 1), d = buildSection('DILR', st, 1), qa = buildSection('QA', st, 1);
-ok(v.length === 24 && d.length === 20 && qa.length === 22, `section sizes ${v.length}/${d.length}/${qa.length}`);
-ok(new Set([...v, ...d, ...qa]).size === 66, 'no duplicates in mock');
+ok(v.length === 24 && d.length === 22 && qa.length === 22, `section sizes ${v.length}/${d.length}/${qa.length}`);
+ok(new Set([...v, ...d, ...qa]).size === 68, 'no duplicates in mock');
+ok(new Set(d.map((id) => QMAP[id].setId)).size === 5, 'DILR section uses five sets');
 ok(qa.filter((id) => QMAP[id].topic === 'Arithmetic').length === 8, 'QA arithmetic quota');
 st.attempts = Object.fromEntries(qa.map((id) => [id, { n: 1, correct: true, everCorrect: true, last: '', t: 1, at: 1, history: [] }]));
 const qa2 = buildSection('QA', st, 2);

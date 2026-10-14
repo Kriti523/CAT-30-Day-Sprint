@@ -120,16 +120,58 @@ with sync_playwright() as p:
     page.get_by_role('button', name='Sectional tests').first.click()
     page.locator('button:has-text("Start 40-min test")').nth(2).click()
     page.wait_for_selector('text=Question palette')
-    check(page.locator('aside button').count() == 22, 'QA sectional has 22 questions')
+    check(page.locator('aside button.pal').count() == 22, 'QA sectional has 22 questions')
     page.get_by_role('button', name='Submit section').click()
     page.get_by_role('button', name='Yes, submit').click()
     page.wait_for_selector('text=Review answers')
     check(page.locator('text=/^Score /').count() >= 1, 'test result page')
     page.get_by_role('button', name='Back to tests').click()
     page.locator('button:has-text("Start 40-min test")').nth(0).click()
-    check(page.locator('aside button').count() == 24, 'VARC sectional has 24 questions')
+    check(page.locator('aside button.pal').count() == 24, 'VARC sectional has 24 questions')
     page.screenshot(path=f'{SHOTS}/07-test-varc.png')
     page.get_by_role('button', name='Submit section').click(); page.get_by_role('button', name='Yes, submit').click()
+
+    # --- A running test survives leaving the page and reloading; DILR follows the 68-question pattern
+    page.get_by_role('button', name='Back to tests').click()
+    page.locator('button:has-text("Start 40-min test")').nth(1).click()
+    page.wait_for_selector('text=Question palette')
+    check(page.locator('aside button.pal').count() == 22, 'DILR sectional has 22 questions')
+    tita_seen = False
+    for i in range(22):
+        if page.locator('input[id^="tita-"]').count():
+            tita_seen = True
+            check(page.locator('input[id^="tita-"]').get_attribute('readonly') is not None, 'test answers are typed on the on-screen keypad')
+            for k in ['Minus sign', '4', '2']: page.get_by_role('button', name=k, exact=True).click()
+            check(page.locator('input[id^="tita-"]').input_value() == '-42', 'keypad enters a negative answer')
+            break
+        page.locator('.opt').first.click(); page.get_by_role('button', name='Save & next →').click()
+    check(tita_seen, 'DILR test includes a typed-answer question')
+    answered_before = page.locator('text=/\\d+\\/22 answered/').inner_text()
+    page.get_by_role('button', name='Calculator').click()
+    for k in ['1', '2', 'Multiply', '3', 'Equals']: page.locator('.calc').get_by_role('button', name=k, exact=True).click()
+    check(page.locator('.calc-screen').inner_text().strip().endswith('36'), 'calculator works (12 × 3 = 36)')
+    page.get_by_role('button', name='Close calculator').click()
+    page.get_by_role('button', name='Dashboard').first.click()
+    check(page.get_by_role('button', name='Resume test').count() == 1, 'leaving a test shows a Resume banner')
+    page.get_by_role('button', name='Resume test').click(); page.wait_for_selector('text=Question palette')
+    check(page.locator('text=/\\d+\\/22 answered/').inner_text() == answered_before, f'test resumes with answers kept ({answered_before})')
+    page.reload(); page.wait_for_selector('text=Question palette')
+    check(page.locator('text=/\\d+\\/22 answered/').inner_text() == answered_before, 'test survives a reload')
+    check(page.locator('aside .pal.answered').count() >= 1 and page.locator('aside .pal.not-visited').count() >= 1, 'palette shows CAT states')
+    n_tests = page.evaluate("JSON.parse(localStorage.getItem('cat30-sprint:v1')).tests.length")
+    page.get_by_role('button', name='Discard test').click(); page.get_by_role('button', name='Discard', exact=True).click()
+    check(page.locator('text=Question palette').count() == 0 and page.evaluate("JSON.parse(localStorage.getItem('cat30-sprint:v1')).tests.length") == n_tests, 'discarding ends the test without saving it')
+
+    # --- Back moves between pages; practice and the exam-day checklist survive
+    page.get_by_role('button', name='Question bank').first.click(); page.get_by_role('button', name='Error log').first.click()
+    page.go_back(); page.wait_for_timeout(300)
+    check(page.evaluate('location.hash') == '#bank' and page.locator('text=Question bank').count() >= 1, 'Back returns to the previous page')
+    page.get_by_role('button', name=re.compile(r'^Practise these')).click(); page.wait_for_timeout(200)
+    page.reload(); page.wait_for_timeout(600)
+    check(page.locator('text=Untimed practice').count() == 1, 'practice session survives a reload')
+    page.get_by_role('button', name='Exam strategy').first.click()
+    page.locator('#exam-0').check(); page.get_by_role('button', name='Dashboard').first.click(); page.get_by_role('button', name='Exam strategy').first.click()
+    check(page.locator('#exam-0').is_checked(), 'exam-day checklist ticks are kept')
 
     # --- Other pages render
     for name, marker in [('Paper trends', 'Previous-paper trends'), ('Topic priorities', 'Topic priorities'), ('Formula sheets', 'Formula & revision sheets'),

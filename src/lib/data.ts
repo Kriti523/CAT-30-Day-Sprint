@@ -12,7 +12,7 @@ export const setQuestions = (setId: string) => QUESTIONS.filter((q) => q.setId =
 
 /** Normalise a typed answer: trims, removes commas/spaces/₹/%, and compares numerically when possible. */
 export function normalise(s: string): string {
-  return String(s).trim().replace(/[,\s₹%]/g, '').toLowerCase();
+  return String(s).trim().replace(/[−–]/g, '-').replace(/[,\s₹%]/g, '').toLowerCase();
 }
 
 export function isCorrect(q: Question, given: string): boolean {

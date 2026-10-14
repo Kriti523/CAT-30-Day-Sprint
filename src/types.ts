@@ -66,6 +66,7 @@ export interface TestResult {
   finishedAt: number;
   qids: string[];
   answers: Record<string, string>;
+  spent?: Record<string, number>;          // seconds per question (tests from before this was recorded have none)
   score: number;
   perSection: Record<string, { attempted: number; correct: number; wrong: number; score: number; total: number }>;
 }
@@ -84,6 +85,22 @@ export interface MockLog {
   nextActions: string;
 }
 
+/** A test in progress. Saved with the rest of the progress so it survives reloads, leaving the page and switching devices. */
+export interface RunningTest {
+  kind: 'sectional' | 'full';
+  sections: { s: Section; ids: string[] }[];
+  cur: number;                       // section index
+  qi: number;                        // question index inside the section
+  answers: Record<string, string>;
+  marked: Record<string, boolean>;
+  visited: Record<string, boolean>;
+  spent: Record<string, number>;     // seconds per question
+  sectionStart: number;              // when the current section's 40 minutes started (ms)
+  startedAt: number;
+}
+
+export interface PracticeSession { ids: string[]; title: string; timed: boolean; index: number; startedAt: number }
+
 export interface AppState {
   v: 1;
   attempts: Record<string, AttemptRec>;
@@ -97,4 +114,7 @@ export interface AppState {
   examDate: string;
   tests: TestResult[];
   mocks: MockLog[];
+  activeTest: RunningTest | null;
+  practice: PracticeSession | null;
+  checklist: Record<string, boolean>;      // exam-day checklist ticks
 }

@@ -36,9 +36,10 @@ const niceMax = (m: number) => {
 };
 
 /** Vertical grouped bars. One y-scale, recessive grid, 2px gap between adjacent bars, hover tooltip per bar. */
-export function GroupedBars({ categories, series, height = 240, unit = '', ariaLabel }: { categories: string[]; series: Series[]; height?: number; unit?: string; ariaLabel: string }) {
+/** `showValues` prints each bar's value above it, as CAT data-interpretation charts do. */
+export function GroupedBars({ categories, series, height = 240, unit = '', ariaLabel, showValues = false }: { categories: string[]; series: Series[]; height?: number; unit?: string; ariaLabel: string; showValues?: boolean }) {
   const [hover, setHover] = useState<{ c: number; s: number } | null>(null);
-  const W = 640, H = height, padL = 34, padR = 8, padT = 10, padB = 46;
+  const W = 640, H = height, padL = 34, padR = 8, padT = showValues ? 22 : 10, padB = 46;
   const max = niceMax(Math.max(...series.flatMap((s) => s.values)));
   const div = [5, 4, 2].find((d) => Number.isInteger(max / d)) ?? 4;
   const ticks = Array.from({ length: div + 1 }, (_, i) => (i * max) / div);
@@ -75,6 +76,7 @@ export function GroupedBars({ categories, series, height = 240, unit = '', ariaL
                       fill={s.color} opacity={hover && !active ? 0.55 : 1}>
                       <title>{`${cat} · ${s.name}: ${v}${unit}`}</title>
                     </path>
+                    {showValues && <text x={x + barW / 2} y={y(0) - h - 5} textAnchor="middle" fontSize="11" fill="var(--muted)" className="num">{v}</text>}
                   </g>
                 );
               })}

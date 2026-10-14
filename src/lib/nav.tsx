@@ -3,7 +3,6 @@ import type { Section } from '../types';
 
 export type Page = 'dashboard' | 'plan' | 'bank' | 'practice' | 'tests' | 'errors' | 'trends' | 'priorities' | 'formulas' | 'mocks' | 'strategy' | 'sources' | 'data' | 'account';
 
-export interface Session { ids: string[]; title: string; timed: boolean; index: number }
 
 export interface Nav {
   page: Page;
