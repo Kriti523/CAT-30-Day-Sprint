@@ -152,7 +152,7 @@ function Runner({ run, setRun, onFinish }: { run: Running; setRun: (r: Running) 
   return (
     <div>
       <div className="sticky z-10 mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border px-3 py-2"
-        style={{ top: 'calc(env(safe-area-inset-top, 0px) + 4px)', background: 'var(--surface)', borderColor: 'var(--line)' }}>
+        style={{ top: 'calc(var(--head-bottom) + 4px)', background: 'var(--surface)', borderColor: 'var(--line)' }}>
         <div className="flex items-center gap-2">
           <span className="dot" style={{ background: secVar(sec.s) }} />
           <strong>{sec.s}</strong>

@@ -39,6 +39,9 @@
   color-scheme: dark;
 }
 
+/* Sticky app header; the sidebar and in-page sticky bars sit below it */
+:root { --head-h: 3.5rem; --head-bottom: calc(env(safe-area-inset-top, 0px) + var(--head-h)); }
+
 html, body { background: var(--ground); color: var(--ink); }
 body {
   font-family: "Source Sans 3", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;

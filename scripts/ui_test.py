@@ -147,8 +147,18 @@ with sync_playwright() as p:
 
     # --- Priorities expand + practice
     page.get_by_role('button', name='Topic priorities').first.click()
-    page.locator('button[aria-expanded]').first.click()
+    page.locator('main button[aria-expanded]').first.click()
     check(page.locator('text=Frequency 2023–25').count() >= 1, 'priority ratings expand')
+
+    # --- Desktop sidebar toggles from the hamburger and remembers the choice
+    main_w = lambda: page.evaluate("document.querySelector('main').parentElement.getBoundingClientRect().width")
+    w_open = main_w()
+    page.get_by_role('button', name='Menu').click(); page.wait_for_timeout(350)
+    check(not page.locator('#main-nav').is_visible() and main_w() > w_open + 200, f'desktop: hamburger hides sidebar, page widens ({w_open} -> {main_w()})')
+    page.reload(); page.wait_for_selector('#main-nav', state='attached'); page.wait_for_timeout(100)
+    check(not page.locator('#main-nav').is_visible(), 'desktop: closed sidebar stays closed after reload')
+    page.get_by_role('button', name='Menu').click(); page.wait_for_timeout(350)
+    check(page.locator('#main-nav').is_visible() and abs(main_w() - w_open) < 2, 'desktop: hamburger brings sidebar back')
 
     # --- Dark mode + mobile
     m = b.new_context(viewport={'width': 390, 'height': 844}, color_scheme='dark')
@@ -160,13 +170,22 @@ with sync_playwright() as p:
     bg = mp.evaluate('getComputedStyle(document.body).backgroundColor')
     check(bg in ('rgb(16, 19, 18)',), f'dark theme applied ({bg})')
     mp.screenshot(path=f'{SHOTS}/09-mobile-dark-dashboard.png', full_page=True)
-    mp.get_by_role('tab', name='Question bank').click()
+    check(not mp.locator('#main-nav').is_visible(), 'mobile: menu drawer starts closed')
+    def mgo(name):
+        mp.get_by_role('button', name='Menu').click()
+        mp.locator('#main-nav').get_by_role('button', name=name).click(); mp.wait_for_timeout(250)
+    mgo('Question bank')
+    check(not mp.locator('#main-nav').is_visible(), 'mobile: drawer closes after picking a page')
     mp.screenshot(path=f'{SHOTS}/10-mobile-bank.png')
     for tab in ['30-day plan', 'Paper trends', 'Topic priorities', 'Sectional tests']:
-        mp.get_by_role('tab', name=tab).click(); mp.wait_for_timeout(150)
+        mgo(tab)
         sw = mp.evaluate('document.documentElement.scrollWidth')
         check(sw <= cw + 1, f'mobile {tab}: no horizontal scroll ({sw})')
-    mp.get_by_role('tab', name='Paper trends').click()
+    mp.get_by_role('button', name='Menu').click(); mp.wait_for_timeout(250)
+    check(mp.locator('#main-nav').is_visible(), 'mobile: hamburger opens the drawer')
+    mp.keyboard.press('Escape'); mp.wait_for_timeout(250)
+    check(not mp.locator('#main-nav').is_visible(), 'mobile: Escape closes the drawer')
+    mgo('Paper trends')
     mp.screenshot(path=f'{SHOTS}/11-mobile-trends.png', full_page=True)
     # light explicit
     lp = b.new_context(viewport={'width': 1280, 'height': 900}, color_scheme='dark').new_page()
