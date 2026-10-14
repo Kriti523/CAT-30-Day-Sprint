@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { useStore } from '../lib/store';
+import { useAuth } from '../lib/auth';
 import { PageHead, Panel, Note } from '../components/ui';
 
 export default function DataPage() {
   const { state, replaceAll, reset, persistent } = useStore();
+  const { enabled, user } = useAuth();
   const [text, setText] = useState('');
   const [msg, setMsg] = useState('');
   const [confirmReset, setConfirmReset] = useState(false);
@@ -23,9 +25,15 @@ export default function DataPage() {
 
   return (
     <div>
-      <PageHead eyebrow="Stored only in this browser" title="Your data">
-        Progress, notes, bookmarks, confidence ratings, the error log, plan ticks and mock logs are saved in this browser’s local storage. Nothing is sent anywhere, so a different browser or device starts empty — use a backup to move it.
-      </PageHead>
+      {user ? (
+        <PageHead eyebrow="Saved to your account" title="Your data">
+          Progress, notes, bookmarks, confidence ratings, the error log, plan ticks and mock logs are saved to your account ({user.email}), so every device where you sign in shows the same progress. A backup is still useful as a snapshot you control.
+        </PageHead>
+      ) : (
+        <PageHead eyebrow="Stored only in this browser" title="Your data">
+          Progress, notes, bookmarks, confidence ratings, the error log, plan ticks and mock logs are saved in this browser’s local storage. Nothing is sent anywhere, so a different browser or device starts empty — {enabled ? 'sign in to keep it in an account, or use a backup to move it' : 'use a backup to move it'}.
+        </PageHead>
+      )}
       {!persistent && <div className="mb-4"><Note tone="warn">Local storage is unavailable in this browser session, so changes will not survive a reload.</Note></div>}
       <div className="grid gap-4 md:grid-cols-2">
         <Panel title="Back up">
@@ -45,7 +53,7 @@ export default function DataPage() {
       </div>
       {msg && <p className="mt-3 text-sm" role="status">{msg}</p>}
       <Panel title="Start over" className="mt-4">
-        <p className="text-sm text-muted">Erases all progress in this browser. Export a backup first if you might want it back.</p>
+        <p className="text-sm text-muted">Erases all progress {user ? 'in your account, on every device' : 'in this browser'}. Export a backup first if you might want it back.</p>
         {confirmReset ? (
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <span className="text-sm">Erase everything?</span>

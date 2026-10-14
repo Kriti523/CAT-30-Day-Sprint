@@ -213,6 +213,29 @@ Topic priority scores are derived from the available evidence and are intended a
 
 ---
 
+## 🔐 Accounts & Sync (optional)
+
+Out of the box the app needs no server: progress is saved in the browser. Connect a free [Supabase](https://supabase.com) project and people can **sign in**, so their progress belongs to their account and is the same on every device.
+
+### Setup
+
+1. Create a project at [supabase.com](https://supabase.com).
+2. In **SQL Editor**, paste [`supabase/schema.sql`](supabase/schema.sql) and run it. It creates one `progress` row per account, readable and writable only by its owner.
+3. Copy `.env.example` to `.env.local` and fill in the **Project URL** and the **publishable (anon) key** from the project's API settings. This key is meant to be public; the table's row-level security protects the data.
+4. In **Authentication → URL Configuration**, set the **Site URL** (and a **Redirect URL**) to the address where the app is hosted. Confirmation and password-reset emails link back there, so those emails need the app on a web address, not opened as a local file.
+5. **Email before launch:** Supabase's built-in email only sends to members of your Supabase team, at about 2 emails an hour. Before real users sign up, either set up custom SMTP (for example Resend) under **Authentication → Emails**, or turn off **Confirm email** so sign-up works straight away. Password reset still needs SMTP.
+6. Rebuild with `npm run build` or `npm run build:offline`. The settings are built into the app; without them there is no sign-in and nothing changes.
+
+### How it behaves
+
+- A **new account** starts with the progress already on that device. Signing in to an **existing account** shows that account's progress.
+- A copy is kept in the browser, so the app works **offline**; changes upload when the connection is back.
+- If two devices both change progress while out of sync, the **most recent edit wins** for the whole of the progress (not item by item).
+- **Sign out** affects only that device.
+- `python3 scripts/auth_test.py` tests sign-up, sign-in, two-device sync, offline edits and password reset against a fake Supabase, so no real project is needed.
+
+---
+
 ## 🛠️ Tech Stack
 
 | Technology | Purpose |
@@ -223,6 +246,7 @@ Topic priority scores are derived from the available evidence and are intended a
 | 🎨 Tailwind CSS | Styling |
 | 🐍 Python | Question/data generation & validation |
 | 💾 localStorage | Local persistence |
+| 🔐 Supabase | Optional accounts & sync |
 | 🧪 Playwright | Browser testing |
 
 ### Architecture
@@ -248,6 +272,9 @@ CAT-30-Day-Sprint
 │   └── ...
 │
 ├── public/
+│
+├── supabase/
+│   └── schema.sql (accounts & sync)
 │
 ├── STUDY_PLAN.md
 ├── SOURCES.md

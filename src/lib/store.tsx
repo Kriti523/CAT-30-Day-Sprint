@@ -1,6 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { AppState, Confidence, ErrorReason, MockLog, TestResult } from '../types';
 import { QMAP, isCorrect } from './data';
+import { useAuth } from './auth';
+import { CloudSync, type SyncStatus } from './sync';
 
 const KEY = 'cat30-sprint:v1';
 
@@ -21,13 +23,15 @@ export function emptyState(): AppState {
   };
 }
 
+/** Fills in fields missing from progress saved by an older version of the app. */
+const normalize = (s?: Partial<AppState>): AppState => ({ ...emptyState(), ...s, v: 1 });
+
 /** localStorage can be missing or throw (private mode, blocked storage); the app works without it. */
 function load(): { state: AppState; persistent: boolean } {
   try {
     const raw = window.localStorage.getItem(KEY);
     if (!raw) return { state: emptyState(), persistent: true };
-    const parsed = JSON.parse(raw);
-    return { state: { ...emptyState(), ...parsed, v: 1 }, persistent: true };
+    return { state: normalize(JSON.parse(raw)), persistent: true };
   } catch {
     return { state: emptyState(), persistent: false };
   }
@@ -39,6 +43,11 @@ function save(s: AppState): boolean {
 interface Store {
   state: AppState;
   persistent: boolean;
+  /** Where progress is being saved: this browser only, or the signed-in account (and how that is going). */
+  sync: SyncStatus;
+  retrySync: () => void;
+  /** Uploads anything pending, then signs out; this device then shows its own progress without an account. */
+  signOut: () => Promise<void>;
   record: (qid: string, given: string, seconds: number) => boolean;
   toggleBookmark: (qid: string) => void;
   setNote: (qid: string, text: string) => void;
@@ -59,12 +68,31 @@ interface Store {
 
 const Ctx = createContext<Store | null>(null);
 
+/** Progress belongs to the signed-in account, or to this browser when nobody is signed in. Switching starts a fresh store. */
 export function StoreProvider({ children }: { children: ReactNode }) {
-  const initial = useRef(load());
+  const { user } = useAuth();
+  return <AccountStore key={user?.id ?? ''} uid={user?.id ?? null}>{children}</AccountStore>;
+}
+
+function AccountStore({ uid, children }: { uid: string | null; children: ReactNode }) {
+  const auth = useAuth();
+  const initial = useRef<{ state: AppState; persistent: boolean; cloud: CloudSync | null }>();
+  if (!initial.current) {
+    const cloud = uid ? new CloudSync(uid, normalize, { read: () => load().state, clear: () => { try { localStorage.removeItem(KEY); } catch { /* ignore */ } } }) : null;
+    initial.current = cloud ? { state: cloud.state0, persistent: true, cloud } : { ...load(), cloud: null };
+  }
+  const { cloud } = initial.current;
   const [state, setState] = useState<AppState>(initial.current.state);
   const [persistent, setPersistent] = useState(initial.current.persistent);
+  const [sync, setSync] = useState<SyncStatus>(cloud ? 'loading' : 'local');
 
-  useEffect(() => { setPersistent(save(state)); }, [state]);
+  useEffect(() => {
+    if (!cloud) return;
+    cloud.start(setState, setSync);
+    return () => cloud.stop();
+  }, [cloud]);
+
+  useEffect(() => { if (cloud) cloud.changed(state); else setPersistent(save(state)); }, [state, cloud]);
 
   const update = useCallback((fn: (s: AppState) => AppState) => setState((s) => fn(s)), []);
 
@@ -87,7 +115,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [update]);
 
   const store = useMemo<Store>(() => ({
-    state, persistent, record,
+    state, persistent, record, sync,
+    retrySync: () => cloud?.retry(),
+    signOut: async () => {
+      if (cloud && await cloud.flush()) cloud.forget();
+      await auth.signOut();
+    },
     toggleBookmark: (qid) => update((s) => {
       const b = { ...s.bookmarks };
       if (b[qid]) delete b[qid]; else b[qid] = true;
@@ -107,7 +140,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     deleteMock: (id) => update((s) => ({ ...s, mocks: s.mocks.filter((x) => x.id !== id) })),
     replaceAll: (n) => setState({ ...emptyState(), ...n, v: 1 }),
     reset: () => setState(emptyState()),
-  }), [state, persistent, record, update]);
+  }), [state, persistent, record, update, sync, cloud, auth]);
 
   return <Ctx.Provider value={store}>{children}</Ctx.Provider>;
 }

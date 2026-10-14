@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { NavCtx, type Nav, type Page, type Session } from './lib/nav';
 import { useStore } from './lib/store';
+import { useAuth } from './lib/auth';
+import type { SyncStatus } from './lib/sync';
 import type { Section } from './types';
 import Dashboard from './pages/Dashboard';
 import PlanPage from './pages/Plan';
@@ -15,6 +17,7 @@ import Mocks from './pages/Mocks';
 import Strategy from './pages/Strategy';
 import SourcesPage from './pages/Sources';
 import DataPage from './pages/Data';
+import AccountPage from './pages/Account';
 
 const NAV: { page: Page; label: string; group: string }[] = [
   { page: 'dashboard', label: 'Dashboard', group: 'Prepare' },
@@ -30,7 +33,11 @@ const NAV: { page: Page; label: string; group: string }[] = [
   { page: 'sources', label: 'Sources', group: 'Understand' },
   { page: 'data', label: 'Your data', group: 'Understand' },
 ];
-const PAGES = new Set<string>([...NAV.map((n) => n.page), 'practice']);
+const PAGES = new Set<string>([...NAV.map((n) => n.page), 'practice', 'account']);
+
+const SYNC_LABEL: Record<SyncStatus, string> = {
+  local: '', loading: 'Loading…', saving: 'Saving…', saved: 'Saved', offline: 'Offline', failed: 'Not loaded',
+};
 
 function initialPage(): Page {
   try {
@@ -56,7 +63,8 @@ function useWide() {
 }
 
 export default function App() {
-  const { persistent } = useStore();
+  const { persistent, sync, retrySync, signOut } = useStore();
+  const auth = useAuth();
   const [page, setPage] = useState<Page>(initialPage);
   const [bankSection, setBankSection] = useState<Section>('QA');
   const [bankQuery, setBankQuery] = useState('');
@@ -106,6 +114,9 @@ export default function App() {
   const nav = useMemo<Nav>(() => ({ page, go, startSession, bankSection, bankQuery, pendingTest, clearPendingTest: () => setPendingTest(null) }),
     [page, go, startSession, bankSection, bankQuery, pendingTest]);
 
+  // Opened from a password-reset email: go straight to choosing a new password.
+  useEffect(() => { if (auth.recovering) go('account'); }, [auth.recovering, go]);
+
   const groups = ['Prepare', 'Understand'];
   const active = page === 'practice' ? 'bank' : page;
 
@@ -117,7 +128,19 @@ export default function App() {
             <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg>
           </button>
           <span className="display text-lg font-bold">CAT Sprint</span>
-          <span className="ml-auto text-xs text-muted">30 days · 300 questions</span>
+          <span className={`ml-auto text-xs text-muted ${auth.enabled ? 'hidden md:inline' : ''}`}>30 days · 300 questions</span>
+          {auth.enabled && (
+            <button className="btn btn-sm ml-auto md:ml-0" onClick={() => go('account')} aria-current={page === 'account' ? 'page' : undefined}
+              aria-label={auth.user ? `Account: ${auth.user.email}, ${SYNC_LABEL[sync].toLowerCase()}` : undefined}>
+              {auth.user ? (
+                <>
+                  <span className="dot" aria-hidden style={{ background: sync === 'saved' ? 'var(--good)' : sync === 'offline' || sync === 'failed' ? 'var(--bad)' : 'var(--warn)' }} />
+                  <span className="hidden max-w-[12rem] truncate sm:inline">{auth.user.email}</span>
+                  <span className="sm:hidden">{SYNC_LABEL[sync]}</span>
+                </>
+              ) : 'Sign in'}
+            </button>
+          )}
         </header>
 
         {/* Narrow screens: dim the page behind the open drawer; tapping it closes the drawer */}
@@ -154,19 +177,35 @@ export default function App() {
                   This browser is blocking local storage, so progress will be lost when you close the page. Use “Your data → Export” to keep a copy.
                 </div>
               )}
-              {page === 'dashboard' && <Dashboard />}
-              {page === 'plan' && <PlanPage />}
-              {page === 'bank' && <Bank />}
-              {page === 'practice' && <Practice session={session} setSession={setSession} />}
-              {page === 'tests' && <Tests />}
-              {page === 'errors' && <Errors />}
-              {page === 'trends' && <Trends />}
-              {page === 'priorities' && <Priorities />}
-              {page === 'formulas' && <Formulas />}
-              {page === 'mocks' && <Mocks />}
-              {page === 'strategy' && <Strategy />}
-              {page === 'sources' && <SourcesPage />}
-              {page === 'data' && <DataPage />}
+              {sync === 'loading' ? (
+                <p className="py-16 text-center text-muted" role="status">Loading your progress…</p>
+              ) : sync === 'failed' ? (
+                <div className="panel mx-auto max-w-md p-5 text-center" role="alert">
+                  <h1 className="text-xl font-bold">Couldn’t load your progress</h1>
+                  <p className="mt-2 text-sm text-muted">Check your internet connection. Your progress is safe in your account.</p>
+                  <div className="mt-4 flex flex-wrap justify-center gap-2">
+                    <button className="btn btn-primary" onClick={retrySync}>Try again</button>
+                    <button className="btn" onClick={() => void signOut()}>Sign out</button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {page === 'dashboard' && <Dashboard />}
+                  {page === 'plan' && <PlanPage />}
+                  {page === 'bank' && <Bank />}
+                  {page === 'practice' && <Practice session={session} setSession={setSession} />}
+                  {page === 'tests' && <Tests />}
+                  {page === 'errors' && <Errors />}
+                  {page === 'trends' && <Trends />}
+                  {page === 'priorities' && <Priorities />}
+                  {page === 'formulas' && <Formulas />}
+                  {page === 'mocks' && <Mocks />}
+                  {page === 'strategy' && <Strategy />}
+                  {page === 'sources' && <SourcesPage />}
+                  {page === 'data' && <DataPage />}
+                  {page === 'account' && <AccountPage />}
+                </>
+              )}
             </main>
           </div>
         </div>
