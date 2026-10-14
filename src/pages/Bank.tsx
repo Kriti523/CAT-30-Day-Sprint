@@ -8,6 +8,9 @@ import { DiffTag, Note, PageHead, SECTION_NAME, StatusPill, secVar } from '../co
 import { useAuth } from '../lib/auth';
 import { SAMPLE_IDS } from '../data/sample';
 
+/** Topic groups start open on wide screens and closed on phones. */
+const WIDE = typeof window !== 'undefined' && !!window.matchMedia?.('(min-width: 1024px)').matches;
+
 type Status = 'all' | 'new' | 'right' | 'wrong' | 'bookmarked' | 'low' | 'noted';
 
 export default function Bank() {
@@ -40,7 +43,7 @@ export default function Bank() {
       if (status === 'noted' && !state.notes[q.id]) return false;
       if (ql) {
         const set = q.setId ? SETMAP[q.setId] : undefined;
-        const hay = `${q.id} ${q.topic} ${q.subtopic} ${q.text} ${set?.title ?? ''} ${set?.subtopic ?? ''} ${set?.body ?? ''} ${state.notes[q.id] ?? ''}`.toLowerCase();
+        const hay = `${q.id} ${q.setId ?? ''} ${q.topic} ${q.subtopic} ${q.text} ${set?.title ?? ''} ${set?.subtopic ?? ''} ${set?.body ?? ''} ${state.notes[q.id] ?? ''}`.toLowerCase();
         if (!ql.split(/\s+/).every((w) => hay.includes(w))) return false;
       }
       return true;
@@ -50,6 +53,32 @@ export default function Bank() {
   const agg = aggregate(state, inSection);
   const ids = list.map((q) => q.id);
   const title = `${section}${sub ? ` · ${sub}` : ''}${diff ? ` · ${diff}` : ''}${query ? ` · “${query}”` : ''}`;
+
+  const item = (q: (typeof list)[number], i: number) => {
+    const a = state.attempts[q.id];
+    const set = q.setId ? SETMAP[q.setId] : undefined;
+    return (
+      <li key={q.id} data-qid={q.id} style={{ borderColor: 'var(--line)' }}>
+        <button className="flex w-full flex-wrap items-start gap-x-3 gap-y-1 px-4 py-3 text-left hover:bg-[var(--sunk)]"
+          onClick={() => nav.startSession([...ids.slice(i), ...ids.slice(0, i)], title)}>
+          <span className="mono w-12 flex-none pt-0.5 text-sm font-semibold">{q.id}</span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm text-muted">{set ? `${set.id} · ${set.title} — ` : ''}{q.subtopic}</span>
+            <span className="line-clamp-2 block">{q.text.split('\n')[0]}</span>
+          </span>
+          <span className="flex flex-wrap items-center gap-1.5">
+            <DiffTag d={q.difficulty} />
+            <span className="chip">{q.type}</span>
+            {state.bookmarks[q.id] && <span className="chip" title="Bookmarked">★</span>}
+            {state.notes[q.id] && <span className="chip" title="Has a note">✎</span>}
+            {a ? <StatusPill tone={a.correct ? 'good' : 'bad'}>{a.correct ? 'Right' : 'Wrong'}</StatusPill> : <StatusPill tone="neutral">New</StatusPill>}
+          </span>
+        </button>
+      </li>
+    );
+  };
+  // Without a search or topic filter, the list is grouped by topic.
+  const groups = !query.trim() && !sub ? [...new Set(list.map((q) => q.subtopic))].map((g) => ({ sub: g, qs: list.filter((q) => q.subtopic === g) })) : null;
 
   return (
     <div>
@@ -111,32 +140,23 @@ export default function Bank() {
 
       {list.length === 0 ? (
         <p className="panel p-6 text-muted">No questions match these filters. Clear the search or set Status to “All”.</p>
-      ) : (
-        <ul className="panel divide-y" style={{ borderColor: 'var(--line)' }}>
-          {list.map((q, i) => {
-            const a = state.attempts[q.id];
-            const set = q.setId ? SETMAP[q.setId] : undefined;
+      ) : groups ? (
+        <div className="grid gap-2">
+          {groups.map((g) => {
+            const a = aggregate(state, g.qs);
             return (
-              <li key={q.id} style={{ borderColor: 'var(--line)' }}>
-                <button className="flex w-full flex-wrap items-start gap-x-3 gap-y-1 px-4 py-3 text-left hover:bg-[var(--sunk)]"
-                  onClick={() => nav.startSession([...ids.slice(i), ...ids.slice(0, i)], title)}>
-                  <span className="mono w-12 flex-none pt-0.5 text-sm font-semibold">{q.id}</span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-sm text-muted">{set ? `${set.id} · ${set.title} — ` : ''}{q.subtopic}</span>
-                    <span className="line-clamp-2 block">{q.text.split('\n')[0]}</span>
-                  </span>
-                  <span className="flex flex-wrap items-center gap-1.5">
-                    <DiffTag d={q.difficulty} />
-                    <span className="chip">{q.type}</span>
-                    {state.bookmarks[q.id] && <span className="chip" title="Bookmarked">★</span>}
-                    {state.notes[q.id] && <span className="chip" title="Has a note">✎</span>}
-                    {a ? <StatusPill tone={a.correct ? 'good' : 'bad'}>{a.correct ? 'Right' : 'Wrong'}</StatusPill> : <StatusPill tone="neutral">New</StatusPill>}
-                  </span>
-                </button>
-              </li>
+              <details key={g.sub} className="panel" open={WIDE}>
+                <summary className="flex cursor-pointer flex-wrap items-baseline justify-between gap-2 px-4 py-3">
+                  <span className="font-semibold">{g.sub}</span>
+                  <span className="num text-sm text-muted">{a.attempted}/{g.qs.length} done · {pct(a.accuracy)}</span>
+                </summary>
+                <ul className="divide-y border-t" style={{ borderColor: 'var(--line)' }}>{g.qs.map((q) => item(q, list.indexOf(q)))}</ul>
+              </details>
             );
           })}
-        </ul>
+        </div>
+      ) : (
+        <ul className="panel divide-y" style={{ borderColor: 'var(--line)' }}>{list.map((q, i) => item(q, i))}</ul>
       )}
     </div>
   );

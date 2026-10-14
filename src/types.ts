@@ -56,7 +56,11 @@ export interface AttemptRec {
   history: { c: boolean; t: number; at: number }[];
 }
 
-export interface ErrorEntry { reason?: ErrorReason; note?: string; addedAt: number; resolved: boolean }
+export interface ErrorEntry {
+  reason?: ErrorReason; note?: string; addedAt: number; resolved: boolean;
+  stage?: number;   // correct spaced reattempts so far (see src/lib/review.ts)
+  due?: number;     // when it next comes back (ms)
+}
 
 export interface TestResult {
   id: string;

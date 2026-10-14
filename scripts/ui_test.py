@@ -38,27 +38,27 @@ with sync_playwright() as p:
     page.wait_for_selector('text=Question bank')
     page.get_by_role('tab', name=re.compile('QA')).click()
     page.fill('#bank-search', 'remainder')
-    n_search = page.locator('ul.panel > li').count()
+    n_search = page.locator('[data-qid]').count()
     check(n_search >= 3, f'search "remainder" returns {n_search} QA results')
     page.fill('#bank-search', '')
     page.select_option('#bank-diff', 'Hard')
-    n_hard = page.locator('ul.panel > li').count()
+    n_hard = page.locator('[data-qid]').count()
     check(n_hard == 20, f'QA Hard filter = {n_hard} (expected 20)')
     page.select_option('#bank-diff', '')
     page.select_option('#bank-type', 'TITA')
-    n_tita = page.locator('ul.panel > li').count()
+    n_tita = page.locator('[data-qid]').count()
     check(n_tita == 34, f'QA TITA filter = {n_tita} (expected 34)')
     page.select_option('#bank-type', '')
     page.get_by_role('tab', name=re.compile('DILR')).click()
-    check(page.locator('ul.panel > li').count() == 100, 'DILR shows 100')
+    check(page.locator('[data-qid]').count() == 100, 'DILR shows 100')
     page.get_by_role('tab', name=re.compile('VARC')).click()
-    check(page.locator('ul.panel > li').count() == 100, 'VARC shows 100')
+    check(page.locator('[data-qid]').count() == 100, 'VARC shows 100')
     page.screenshot(path=f'{SHOTS}/02-bank.png')
 
     # --- Practice: answer QA Q001 correctly (MCQ) via search by id
     page.get_by_role('tab', name=re.compile('QA')).click()
     page.fill('#bank-search', 'Q001')
-    page.locator('ul.panel > li button').first.click()
+    page.locator('[data-qid] button').first.click()
     page.wait_for_selector('text=Check answer')
     q = json.load(open(os.path.join(ROOT, 'src/data/questions.json')))
     Q = {x['id']: x for x in q}
@@ -85,7 +85,7 @@ with sync_playwright() as p:
     page.get_by_role('button', name='Question bank').first.click()
     page.get_by_role('tab', name=re.compile('QA')).click()
     page.fill('#bank-search', tita['id'])
-    page.locator('ul.panel > li button').first.click()
+    page.locator('[data-qid] button').first.click()
     page.fill(f"#tita-{tita['id']}", '123456')
     page.get_by_role('button', name='Check answer').click()
     check(page.locator('text=✗ Incorrect').count() == 1, 'wrong TITA marked incorrect')
@@ -103,14 +103,15 @@ with sync_playwright() as p:
     # --- Error log & reattempt queue
     page.get_by_role('button', name='Error log').first.click()
     page.wait_for_selector('text=Error log & reattempt queue')
-    check(page.get_by_role('button', name=re.compile(r'Start reattempt queue \(2\)')).count() == 1, 'reattempt queue has wrong + low-confidence (2)')
+    check(page.get_by_role('button', name=re.compile(r'Start reattempt queue \(1\)')).count() == 1 and page.locator('text=/1 coming back later, next on/').count() == 1,
+          'a miss comes back tomorrow; the low-confidence question is due now')
     page.screenshot(path=f'{SHOTS}/04-errors.png')
 
     # --- DILR set rendering + timed random
     page.get_by_role('button', name='Question bank').first.click()
     page.get_by_role('tab', name=re.compile('DILR')).click()
     page.fill('#bank-search', 'D061')
-    page.locator('ul.panel > li button').first.click()
+    page.locator('[data-qid] button').first.click()
     check(page.locator('svg[aria-label*="Revenue"]').count() >= 1, 'DILR bar chart renders')
     page.screenshot(path=f'{SHOTS}/05-dilr-chart.png')
     page.get_by_role('button', name='Question bank').first.click()
@@ -186,6 +187,25 @@ with sync_playwright() as p:
     page.locator('#exam-0').check(); page.get_by_role('button', name='Dashboard').first.click(); page.get_by_role('button', name='Exam strategy').first.click()
     check(page.locator('#exam-0').is_checked(), 'exam-day checklist ticks are kept')
 
+    # --- Reattempts reshuffle options; the dashboard counts the streak
+    page.get_by_role('button', name='Question bank').first.click(); page.get_by_role('tab', name=re.compile('QA')).click()
+    page.fill('#bank-search', 'Q001'); page.locator('[data-qid] button').first.click(); page.wait_for_timeout(200)
+    check(page.locator('text=Options shuffled').count() == 1 and page.locator('text=Previous try: right').count() == 1, 'a reattempt shows shuffled options and the previous result')
+    page.get_by_role('button', name='Dashboard').first.click()
+    check(page.locator('text=/1-day streak/').count() == 1, 'dashboard shows the practice streak')
+
+    # --- A full mock: results with benchmarks and set review, logged on Mock analysis
+    page.get_by_role('button', name='Sectional tests').first.click()
+    page.get_by_role('button', name='Start 120-min mock').click(); page.wait_for_selector('text=Question palette')
+    page.locator('.opt').first.click() if page.locator('.opt').count() else None
+    for _ in range(3):
+        page.get_by_role('button', name='Submit section').click(); page.get_by_role('button', name='Yes, submit').click(); page.wait_for_timeout(200)
+    page.wait_for_selector('text=Review answers')
+    check(page.locator('text=vs 99th-percentile level').count() == 1 and page.locator('text=Sets and passages').count() == 1, 'mock results show benchmarks and set review')
+    check(page.locator('text=/percentile in CAT 2025|95th percentile needed in CAT 2025/').count() == 1, 'mock results give an indicative percentile band')
+    page.get_by_role('button', name='Add your reflections').click()
+    check(page.locator('text=/In-app mock \\d/').count() >= 1, 'a full mock is logged on Mock analysis automatically')
+
     # --- Other pages render
     for name, marker in [('Paper trends', 'Previous-paper trends'), ('Topic priorities', 'Topic priorities'), ('Formula sheets', 'Formula & revision sheets'),
                          ('Mock analysis', 'Mock analysis template'), ('Exam strategy', 'Working targets'), ('Sources', 'Sources & limitations'), ('Your data', 'Back up')]:
@@ -242,6 +262,10 @@ with sync_playwright() as p:
     check(not mp.locator('#main-nav').is_visible(), 'mobile: Escape closes the drawer')
     mgo('Paper trends')
     mp.screenshot(path=f'{SHOTS}/11-mobile-trends.png', full_page=True)
+    mgo('Question bank'); mp.get_by_role('tab', name=re.compile('VARC')).click(); mp.fill('#bank-search', 'V001'); mp.locator('[data-qid] button').first.click(); mp.wait_for_timeout(200)
+    check(mp.get_by_role('tab', name='Passage').get_attribute('aria-selected') == 'true' and not mp.locator('.opt').first.is_visible(), 'mobile: a passage opens on the Passage tab')
+    mp.get_by_role('tab', name='Question').click()
+    check(mp.locator('.opt').first.is_visible(), 'mobile: the Question tab shows the options')
     # light explicit
     lp = b.new_context(viewport={'width': 1280, 'height': 900}, color_scheme='dark').new_page()
     lp.route(re.compile(r'https://fonts\..*'), lambda r: r.abort())

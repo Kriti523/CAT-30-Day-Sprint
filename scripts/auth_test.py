@@ -294,7 +294,7 @@ with sync_playwright() as p:
     check(P.get_by_role('button', name='Free sample').count() == 1 and P.locator('text=/Your \\d+-day plan is ready/').count() == 1,
           'unpaid: dashboard offers full access instead of the plan')
     P.get_by_role('button', name='Question bank').first.click(); P.get_by_role('tab', name=re.compile('QA')).click()
-    check(P.locator('ul.panel > li').count() == 8, 'unpaid: the bank shows the 8 sample QA questions')
+    check(P.locator('[data-qid]').count() == 8, 'unpaid: the bank shows the 8 sample QA questions')
     P.get_by_role('button', name='Random across all sections').click(); P.wait_for_timeout(300)
     ids = P.locator('[aria-label="Questions in this session"] button').all_inner_texts()
     check(len(ids) == 10 and all(i in SAMPLE for i in ids), f'unpaid: random practice draws 10 sample questions ({len(ids)})')
@@ -314,7 +314,7 @@ with sync_playwright() as p:
     P.wait_for_selector('text=Start 120-min mock')
     check(P.get_by_role('button', name='Free sample').count() == 0, 'a valid key unlocks the tests and removes the sample badge')
     P.get_by_role('button', name='Question bank').first.click(); P.get_by_role('tab', name=re.compile('QA')).click()
-    check(P.locator('ul.panel > li').count() == 100, 'unlocked: the bank shows all 100 QA questions')
+    check(P.locator('[data-qid]').count() == 100, 'unlocked: the bank shows all 100 QA questions')
     P.reload(); P.wait_for_selector('text=Question bank'); P.wait_for_timeout(800)
     check(P.get_by_role('button', name='Free sample').count() == 0, 'access is kept after a reload')
     ctxQ, Q = device(b)

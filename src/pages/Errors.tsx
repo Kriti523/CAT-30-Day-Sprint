@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { QMAP } from '../lib/data';
+import { QMAP, letters } from '../lib/data';
 import { useNav } from '../lib/nav';
 import { reattemptQueue, useStore } from '../lib/store';
 import { ERROR_REASONS } from '../types';
+import { STEPS, isDue } from '../lib/review';
+import { fmtDate } from '../lib/stats';
 import { Meter, PageHead, Panel, SectionTag, StatusPill } from '../components/ui';
 
 export default function Errors() {
@@ -13,6 +15,8 @@ export default function Errors() {
   const open = entries.filter(([, e]) => !e.resolved);
   const shown = showResolved ? entries : open;
   const queue = reattemptQueue(state);
+  const now = Date.now();
+  const later = open.filter(([, e]) => !isDue(e, now)).sort((a, b) => (a[1].due ?? 0) - (b[1].due ?? 0));
   const reasonCounts = ERROR_REASONS.map((r) => ({ r, n: entries.filter(([, e]) => e.reason === r).length }));
   const maxN = Math.max(1, ...reasonCounts.map((x) => x.n));
   const untagged = entries.filter(([, e]) => !e.reason).length;
@@ -21,8 +25,11 @@ export default function Errors() {
     <div>
       <PageHead eyebrow="Wrong answers are logged automatically" title="Error log & reattempt queue"
         actions={<button className="btn btn-primary" disabled={!queue.length} onClick={() => startSession(queue, 'Reattempt queue')}>Start reattempt queue ({queue.length})</button>}>
-        A question leaves the queue when you answer it correctly. Low-confidence questions (rated “Low”) are queued too. Tag every miss with a reason — the pattern tells you what to fix.
+        A miss comes back {STEPS.map((d) => `${d}`).join(', ').replace(/, (\d+)$/, ' and $1')} days later. Get it right each time and it’s resolved; getting it right straight after reading the solution doesn’t count. Low-confidence questions are queued too. Tag every miss with a reason: the pattern tells you what to fix.
       </PageHead>
+      {later.length > 0 && (
+        <p className="-mt-3 mb-5 text-sm text-muted">{queue.length} due now · {later.length} coming back later, next on {fmtDate(new Date(later[0][1].due!))}.</p>
+      )}
 
       <div className="grid gap-4 md:grid-cols-[1fr_2fr]">
         <Panel title="Why you miss questions">
@@ -50,11 +57,14 @@ export default function Errors() {
                       <span className="text-sm text-muted">{q.subtopic}</span>
                       <span className="ml-auto flex items-center gap-2">
                         {a && <span className="text-xs text-muted num">{a.n} attempt{a.n > 1 ? 's' : ''}</span>}
-                        {e.resolved ? <StatusPill tone="good">Resolved</StatusPill> : <StatusPill tone="bad">Open</StatusPill>}
+                        {e.resolved ? <StatusPill tone="good">Resolved</StatusPill>
+                          : isDue(e, now) ? <StatusPill tone="bad">Due now</StatusPill>
+                          : <StatusPill tone="neutral">Back {fmtDate(new Date(e.due!))}</StatusPill>}
+                        {!e.resolved && <span className="text-xs text-muted num">step {Math.min(e.stage ?? 0, STEPS.length - 1) + 1} of {STEPS.length}</span>}
                       </span>
                     </div>
                     <p className="mt-1 line-clamp-2 text-sm">{q.text.split('\n')[0]}</p>
-                    <p className="mt-1 text-xs text-muted"><span className="label">Rule · </span>{q.note}</p>
+                    <p className="mt-1 text-xs text-muted"><span className="label">Rule · </span>{letters(q.note)}</p>
                     <div className="mt-2 grid gap-2 sm:grid-cols-[auto_1fr_auto]">
                       <select id={`er-${id}`} className="field" value={e.reason ?? ''} onChange={(ev) => setErrorReason(id, ev.target.value as never)} aria-label="Reason">
                         <option value="">Reason…</option>{ERROR_REASONS.map((r) => <option key={r}>{r}</option>)}

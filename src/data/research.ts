@@ -100,6 +100,12 @@ export const PERCENTILE_SCORES = {
   ],
 };
 
+/** CAT 2025 scaled scores at each percentile (same single source as above), for an indicative band on results. */
+export const BENCH_2025 = {
+  total: [{ pct: '99.5+', score: 93 }, { pct: '99', score: 84.8 }, { pct: '95', score: 62.3 }],
+  sec99: { VARC: 44, DILR: 29.8, QA: 27.3 } as Record<'VARC' | 'DILR' | 'QA', number>,
+};
+
 export const GOOD_ATTEMPTS_2025 = [
   { slot: 'Slot 1', p95: 'VARC 16–17 · DILR 12 · QA 12–13', difficulty: 'Moderate (IMS) / Moderate–Difficult (Cracku)' },
   { slot: 'Slot 2', p95: 'VARC 17–18 · DILR 10–11 · QA 9–10', difficulty: 'Moderate–Difficult (IMS) / "slightly easier than Slot 1" (GradSquare)' },

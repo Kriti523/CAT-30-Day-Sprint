@@ -4,7 +4,8 @@ import { RANKED } from '../data/priorities';
 import { QUESTIONS, bySection } from '../lib/data';
 import { useNav } from '../lib/nav';
 import { reattemptQueue, useStore } from '../lib/store';
-import { aggregate, bySubtopic, daysUntil, fmtDate, pct } from '../lib/stats';
+import { activeDays, aggregate, bySubtopic, daysUntil, fmtDate, pct, streak } from '../lib/stats';
+import { toISODate } from '../lib/dates';
 import { usePlan } from '../lib/usePlan';
 import { useAuth } from '../lib/auth';
 import { SECTIONS } from '../types';
@@ -50,6 +51,7 @@ export default function Dashboard() {
           <div className="text-sm text-muted">questions attempted · accuracy {pct(total.accuracy)}</div>
           <div className="mt-3"><Meter value={total.attempted} max={300} label="Questions attempted" /></div>
           <div className="mt-3 text-sm"><span className="num font-semibold">{plan.done}</span>/{totalDays} plan days complete</div>
+          <Streak />
         </Panel>
         {SECTIONS.map((s) => {
           const a = aggregate(state, bySection(s));
@@ -80,7 +82,7 @@ export default function Dashboard() {
         <div className="grid content-start gap-4">
           <Panel title="Needs attention">
             <ul className="grid gap-2 text-sm">
-              <li className="flex items-center justify-between gap-2"><span>Reattempt queue (wrong or low confidence)</span><button className="btn btn-sm" onClick={() => go('errors')}>{queue.length}</button></li>
+              <li className="flex items-center justify-between gap-2"><span>Reattempt queue (due now)</span><button className="btn btn-sm" onClick={() => go('errors')}>{queue.length}</button></li>
               <li className="flex items-center justify-between gap-2"><span>Bookmarked questions</span><button className="btn btn-sm" onClick={() => startSession(Object.keys(state.bookmarks), 'Bookmarks')} disabled={!Object.keys(state.bookmarks).length}>{Object.keys(state.bookmarks).length}</button></li>
               <li className="flex items-center justify-between gap-2"><span>Mocks analysed</span><button className="btn btn-sm" onClick={() => go('mocks')}>{state.mocks.length}</button></li>
             </ul>
@@ -99,13 +101,19 @@ export default function Dashboard() {
           </Panel>
           <Panel title="Must-master topics" aside={<button className="btn btn-sm btn-ghost" onClick={() => go('priorities')}>All priorities →</button>}>
             <ul className="grid gap-1 text-sm">
-              {must.map((t) => (
+              {must.map((t) => {
+                const re = t.bankFilter ? new RegExp(t.bankFilter, 'i') : null;
+                const ids = re ? QUESTIONS.filter((q) => q.section === t.section && (re.test(q.subtopic) || re.test(q.topic))).map((q) => q.id) : [];
+                return (
                 <li key={t.topic} className="flex items-center gap-2">
                   <span className="dot" style={{ background: secVar(t.section) }} />
-                  <span className="flex-1">{t.topic}</span>
+                  {ids.length
+                    ? <button className="flex-1 text-left underline-offset-2 hover:underline" onClick={() => startSession(ids, t.topic)}>{t.topic}</button>
+                    : <span className="flex-1">{t.topic}</span>}
                   <span className="num font-semibold">{t.score}</span>
                 </li>
-              ))}
+                );
+              })}
             </ul>
           </Panel>
         </div>
@@ -133,6 +141,27 @@ export default function Dashboard() {
           ))}
         </ul>
       </Panel>
+    </div>
+  );
+}
+
+/** Days in a row with practice, and the last seven days at a glance. */
+function Streak() {
+  const { state } = useStore();
+  const n = streak(state);
+  const days = activeDays(state);
+  const today = new Date();
+  const week = Array.from({ length: 7 }, (_, i) => new Date(today.getFullYear(), today.getMonth(), today.getDate() - 6 + i));
+  const practisedToday = days.has(toISODate(today));
+  return (
+    <div className="mt-3 border-t pt-3 text-sm" style={{ borderColor: 'var(--line)' }}>
+      <div><span className="num font-semibold">{n}</span>-day streak{n > 0 && !practisedToday ? ' · practise today to keep it' : ''}</div>
+      <div className="mt-1.5 flex gap-1" aria-label="Practice in the last seven days">
+        {week.map((d) => {
+          const on = days.has(toISODate(d));
+          return <span key={d.getTime()} title={`${fmtDate(d)}${on ? ': practised' : ''}`} className="h-2.5 flex-1 rounded-sm" style={{ background: on ? 'var(--good)' : 'var(--sunk)' }} />;
+        })}
+      </div>
     </div>
   );
 }

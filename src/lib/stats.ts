@@ -1,5 +1,6 @@
 import type { AppState, Question, Section } from '../types';
 import { QUESTIONS } from './data';
+import { toISODate } from './dates';
 
 export interface Agg { total: number; attempted: number; correct: number; accuracy: number | null; avgTime: number | null }
 
@@ -36,3 +37,21 @@ export function daysUntil(iso: string, now = new Date()): number {
 }
 
 export const pct = (v: number | null) => (v === null ? '—' : `${Math.round(v * 100)}%`);
+
+/** Days (yyyy-mm-dd) with any practice: an answered question or a finished test. */
+export function activeDays(s: AppState): Set<string> {
+  const days = new Set<string>();
+  for (const a of Object.values(s.attempts)) for (const h of a.history ?? [{ at: a.at }]) days.add(toISODate(new Date(h.at)));
+  for (const t of s.tests) days.add(toISODate(new Date(t.finishedAt)));
+  return days;
+}
+
+/** Consecutive days of practice up to today. Today not practised yet doesn't break it until the day is over. */
+export function streak(s: AppState, now = new Date()): number {
+  const days = activeDays(s);
+  const d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (!days.has(toISODate(d))) d.setDate(d.getDate() - 1);
+  let n = 0;
+  while (days.has(toISODate(d))) { n++; d.setDate(d.getDate() - 1); }
+  return n;
+}

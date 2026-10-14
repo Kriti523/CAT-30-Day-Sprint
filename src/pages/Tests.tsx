@@ -4,10 +4,12 @@ import { useNav } from '../lib/nav';
 import { useStore } from '../lib/store';
 import { SECTION_MINUTES, buildSection, marksFor, scoreSection, sectionLeft } from '../lib/tests';
 import { SECTIONS, type RunningTest, type Section, type TestResult } from '../types';
-import { AnswerInput, RichText, SetContext, Solution } from '../components/QuestionView';
+import { AnswerInput, RichText, SetContext, SetSplit, Solution } from '../components/QuestionView';
 import { Calculator } from '../components/Calculator';
 import { LineChart } from '../components/charts';
 import { Note, PageHead, Panel, StatusPill, secVar } from '../components/ui';
+import { BENCH_2025 } from '../data/research';
+import { toISO } from '../lib/store';
 import { usePlan } from '../lib/usePlan';
 import { useAuth } from '../lib/auth';
 import { Unlock } from '../components/Unlock';
@@ -49,6 +51,16 @@ export default function Tests() {
       qids, answers: r.answers, spent: r.spent, score: Object.values(perSection).reduce((a, b) => a + b.score, 0), perSection,
     };
     store.saveTest(t);
+    // A full mock goes straight into Mock analysis, ready for reflections.
+    if (r.kind === 'full') {
+      const minutes = (sec: Section) => Math.round(r.sections.find((x) => x.s === sec)!.ids.reduce((a, id) => a + (r.spent[id] ?? 0), 0) / 60);
+      const row = (sec: Section) => ({ attempted: perSection[sec].attempted, correct: perSection[sec].correct, minutes: minutes(sec), percentile: '' });
+      store.saveMock({
+        id: `M${t.id}`, name: `In-app mock ${store.state.mocks.length + 1}`, date: toISO(new Date()), source: 'In-app mock',
+        rows: { VARC: row('VARC'), DILR: row('DILR'), QA: row('QA') },
+        percentile: '', leftDoable: '', timeSinks: '', setSelection: '', errorTypes: '', nextActions: '',
+      });
+    }
     setActiveTest(null);
     setResult(t);
   };
@@ -166,6 +178,23 @@ function Runner({ run, setRun, onFinish }: { run: RunningTest; setRun: (r: Runni
 
   const answered = sec.ids.filter((x) => run.answers[x] !== undefined && run.answers[x] !== '').length;
 
+  const questionPanel = (
+    <div className="panel p-4 sm:p-5">
+      <div className="mb-2 flex flex-wrap items-center gap-2 text-sm">
+        <span className="chip mono">Q{run.qi + 1}</span><span className="chip">{q.type}</span>
+        <span className="chip">{q.type === 'MCQ' ? '+3 / −1' : '+3 / 0'}</span>
+      </div>
+      <div className="mb-4"><RichText text={q.text} /></div>
+      <AnswerInput q={q} exam value={run.answers[id] ?? ''} onChange={(v) => setRun({ ...run, answers: { ...run.answers, [id]: v } })} />
+      <div className="mt-4 flex flex-wrap gap-2">
+        <button className="btn" disabled={run.qi === 0} onClick={() => goTo(run.qi - 1)}>← Previous</button>
+        <button className="btn btn-primary" disabled={run.qi === sec.ids.length - 1} onClick={() => goTo(run.qi + 1)}>Save & next →</button>
+        <button className="btn" aria-pressed={!!run.marked[id]} onClick={() => setRun({ ...run, marked: { ...run.marked, [id]: !run.marked[id] } })}>{run.marked[id] ? 'Unmark review' : 'Mark for review'}</button>
+        <button className="btn btn-ghost" onClick={() => { const a = { ...run.answers }; delete a[id]; setRun({ ...run, answers: a }); }}>Clear response</button>
+      </div>
+    </div>
+  );
+
   return (
     <div>
       <div className="sticky z-10 mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border px-3 py-2"
@@ -190,23 +219,9 @@ function Runner({ run, setRun, onFinish }: { run: RunningTest; setRun: (r: Runni
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[1fr_220px]">
-        <div className={set ? 'grid gap-4 xl:grid-cols-2' : ''}>
-          {set && <div className="panel p-4 sm:p-5 xl:max-h-[75vh] xl:overflow-y-auto"><SetContext set={set} exam /></div>}
-          <div className="panel p-4 sm:p-5">
-            <div className="mb-2 flex flex-wrap items-center gap-2 text-sm">
-              <span className="chip mono">Q{run.qi + 1}</span><span className="chip">{q.type}</span>
-              <span className="chip">{q.type === 'MCQ' ? '+3 / −1' : '+3 / 0'}</span>
-            </div>
-            <div className="mb-4"><RichText text={q.text} /></div>
-            <AnswerInput q={q} exam value={run.answers[id] ?? ''} onChange={(v) => setRun({ ...run, answers: { ...run.answers, [id]: v } })} />
-            <div className="mt-4 flex flex-wrap gap-2">
-              <button className="btn" disabled={run.qi === 0} onClick={() => goTo(run.qi - 1)}>← Previous</button>
-              <button className="btn btn-primary" disabled={run.qi === sec.ids.length - 1} onClick={() => goTo(run.qi + 1)}>Save & next →</button>
-              <button className="btn" aria-pressed={!!run.marked[id]} onClick={() => setRun({ ...run, marked: { ...run.marked, [id]: !run.marked[id] } })}>{run.marked[id] ? 'Unmark review' : 'Mark for review'}</button>
-              <button className="btn btn-ghost" onClick={() => { const a = { ...run.answers }; delete a[id]; setRun({ ...run, answers: a }); }}>Clear response</button>
-            </div>
-          </div>
-        </div>
+        {set
+          ? <SetSplit q={q} wide="xl" setPanel={<div className="panel p-4 sm:p-5 xl:max-h-[75vh] xl:overflow-y-auto"><SetContext set={set} exam /></div>} questionPanel={questionPanel} />
+          : questionPanel}
         <aside className="panel h-fit p-3">
           <div className="label mb-2">Question palette</div>
           <div className="grid grid-cols-6 gap-1.5 lg:grid-cols-5">
@@ -241,33 +256,82 @@ function Runner({ run, setRun, onFinish }: { run: RunningTest; setRun: (r: Runni
 
 function Result({ t, onClose }: { t: TestResult; onClose: () => void }) {
   const [open, setOpen] = useState<string | null>(null);
-  const rows = useMemo(() => t.sections.map((s) => ({ s, ...t.perSection[s] })), [t]);
+  const nav = useNav();
+  const rows = useMemo(() => t.sections.map((s) => {
+    const ids = t.qids.filter((id) => QMAP[id].section === s);
+    return { s, ...t.perSection[s], seconds: ids.reduce((a, id) => a + (t.spent?.[id] ?? 0), 0) };
+  }), [t]);
+  // Sets and passages: how each one went, to review set selection.
+  const sets = useMemo(() => {
+    const out: { id: string; title: string; total: number; attempted: number; correct: number; seconds: number }[] = [];
+    for (const id of t.qids) {
+      const q = QMAP[id];
+      if (!q.setId) continue;
+      let row = out.find((r) => r.id === q.setId);
+      if (!row) { row = { id: q.setId, title: SETMAP[q.setId].title, total: 0, attempted: 0, correct: 0, seconds: 0 }; out.push(row); }
+      const g = t.answers[id];
+      row.total++; row.seconds += t.spent?.[id] ?? 0;
+      if (g !== undefined && g !== '') { row.attempted++; if (isCorrect(q, g)) row.correct++; }
+    }
+    return out;
+  }, [t]);
+  const band = t.kind === 'full' ? BENCH_2025.total.find((b) => t.score >= b.score) : undefined;
+
   return (
     <div>
       <PageHead eyebrow={t.kind === 'full' ? 'Full in-app mock' : 'Sectional test'} title={`Score ${t.score}`}
         actions={<button className="btn" onClick={onClose}>Back to tests</button>}>
-        Every answered question has been added to your attempts; wrong ones are in the error log and reattempt queue. Log reflections on the Mock Analysis page.
+        Every answered question has been added to your attempts; wrong ones come back in your reattempt queue from tomorrow.
+        {t.kind === 'full' && <> {band ? <>A score like this was around the <strong>{band.pct} percentile</strong> in CAT 2025.</> : <>That is below what the 95th percentile needed in CAT 2025 (about {BENCH_2025.total[2].score}).</>}</>}
       </PageHead>
-      <div className="scroll-x mb-6">
+      <div className="scroll-x mb-2">
         <table className="data">
-          <thead><tr><th>Section</th><th className="n">Questions</th><th className="n">Attempted</th><th className="n">Correct</th><th className="n">Wrong</th><th className="n">Accuracy</th><th className="n">Score</th></tr></thead>
-          <tbody>{rows.map((r) => (
-            <tr key={r.s}><td>{r.s}</td><td className="n num">{r.total}</td><td className="n num">{r.attempted}</td><td className="n num">{r.correct}</td><td className="n num">{r.wrong}</td>
-              <td className="n num">{r.attempted ? Math.round((100 * r.correct) / r.attempted) : 0}%</td><td className="n num font-semibold">{r.score}</td></tr>
-          ))}</tbody>
+          <thead><tr><th>Section</th><th className="n">Attempted</th><th className="n">Correct</th><th className="n">Wrong</th><th className="n">Accuracy</th><th className="n">Time used</th><th className="n">Score</th><th>vs 99th-percentile level</th></tr></thead>
+          <tbody>{rows.map((r) => {
+            const bench = BENCH_2025.sec99[r.s];
+            return (
+              <tr key={r.s}><td>{r.s}</td><td className="n num">{r.attempted}/{r.total}</td><td className="n num">{r.correct}</td><td className="n num">{r.wrong}</td>
+                <td className="n num">{r.attempted ? Math.round((100 * r.correct) / r.attempted) : 0}%</td><td className="n num">{fmtTime(r.seconds)}</td>
+                <td className="n num font-semibold">{r.score}</td>
+                <td>{r.score >= bench ? <StatusPill tone="good">At or above ({bench})</StatusPill> : <StatusPill tone="neutral">{Math.round((bench - r.score) * 10) / 10} below ({bench})</StatusPill>}</td></tr>
+            );
+          })}</tbody>
         </table>
       </div>
+      <p className="mb-6 text-xs text-muted">Benchmarks are CAT 2025 scaled scores from one coaching source (see Paper trends). Real percentiles depend on the slot and on everyone else, so read them as a rough guide.</p>
+
+      {t.kind === 'full' && (
+        <div className="mb-6"><Note>This mock is logged on Mock analysis. <button className="font-semibold underline underline-offset-2" onClick={() => nav.go('mocks')}>Add your reflections</button> while it’s fresh.</Note></div>
+      )}
+
+      {sets.length > 0 && (
+        <Panel title="Sets and passages" className="mb-6">
+          <div className="scroll-x">
+            <table className="data">
+              <thead><tr><th>Set</th><th className="n">Attempted</th><th className="n">Correct</th><th className="n">Time</th></tr></thead>
+              <tbody>{sets.map((r) => (
+                <tr key={r.id}><td><span className="mono text-xs text-muted">{r.id}</span> {r.title}</td><td className="n num">{r.attempted}/{r.total}</td><td className="n num">{r.correct}</td><td className="n num">{fmtTime(r.seconds)}</td></tr>
+              ))}</tbody>
+            </table>
+          </div>
+          <p className="mt-2 text-sm text-muted">Were the sets you skipped easier than the ones you chose? Open them below and check before your next test.</p>
+        </Panel>
+      )}
+
       <Panel title="Review answers">
         <ul className="grid gap-2">
           {t.qids.map((id, i) => {
             const q = QMAP[id];
             const g = t.answers[id];
             const m = marksFor(q, g);
+            const sec = t.spent?.[id];
+            const slow = sec !== undefined && sec > q.time * 1.5;
             return (
               <li key={id} className="rounded-lg border" style={{ borderColor: 'var(--line)' }}>
                 <button className="flex w-full flex-wrap items-center gap-2 p-3 text-left" onClick={() => setOpen(open === id ? null : id)} aria-expanded={open === id}>
                   <span className="mono text-sm font-semibold">{i + 1}. {id}</span>
                   <span className="flex-1 truncate text-sm text-muted">{q.subtopic}</span>
+                  {sec !== undefined && <span className="num text-xs" style={{ color: slow ? 'var(--warn)' : 'var(--muted)' }} title={`Estimated ${fmtTime(q.time)}`}>{fmtTime(sec)}{slow ? ' · slow' : ''}</span>}
                   {g === undefined || g === '' ? <StatusPill tone="neutral">Skipped</StatusPill> : isCorrect(q, g) ? <StatusPill tone="good">+3</StatusPill> : <StatusPill tone="bad">{m}</StatusPill>}
                 </button>
                 {open === id && (

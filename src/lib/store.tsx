@@ -4,6 +4,7 @@ import { QMAP, isCorrect } from './data';
 import { useAuth } from './auth';
 import { CloudSync, type SyncStatus } from './sync';
 import { toISODate } from './dates';
+import { afterAttempt, isDue } from './review';
 
 export { toISODate as toISO } from './dates';
 
@@ -114,9 +115,8 @@ function AccountStore({ uid, children }: { uid: string | null; children: ReactNo
         t: Math.round(seconds), at: Date.now(),
         history: [...(prev?.history ?? []), { c: ok, t: Math.round(seconds), at: Date.now() }].slice(-10),
       };
-      const errors = { ...s.errors };
-      if (!ok) errors[qid] = { ...(errors[qid] ?? { addedAt: Date.now() }), resolved: false };
-      else if (errors[qid]) errors[qid] = { ...errors[qid], resolved: true };
+      const next = afterAttempt(s.errors[qid], ok, Date.now());
+      const errors = next === s.errors[qid] ? s.errors : { ...s.errors, [qid]: next! };
       return { ...s, attempts: { ...s.attempts, [qid]: rec }, errors };
     });
     return ok;
@@ -139,7 +139,7 @@ function AccountStore({ uid, children }: { uid: string | null; children: ReactNo
     setErrorReason: (qid, reason) => update((s) => ({ ...s, errors: { ...s.errors, [qid]: { ...(s.errors[qid] ?? { addedAt: Date.now(), resolved: false }), reason } } })),
     setErrorNote: (qid, note) => update((s) => ({ ...s, errors: { ...s.errors, [qid]: { ...(s.errors[qid] ?? { addedAt: Date.now(), resolved: false }), note } } })),
     resolveError: (qid, resolved) => update((s) => s.errors[qid] ? ({ ...s, errors: { ...s.errors, [qid]: { ...s.errors[qid], resolved } } }) : s),
-    addToQueue: (qid) => update((s) => ({ ...s, errors: { ...s.errors, [qid]: { ...(s.errors[qid] ?? { addedAt: Date.now() }), resolved: false } } })),
+    addToQueue: (qid) => update((s) => ({ ...s, errors: { ...s.errors, [qid]: { ...(s.errors[qid] ?? { addedAt: Date.now() }), resolved: false, due: Date.now() } } })),
     togglePlanTask: (key) => update((s) => ({ ...s, planTasks: { ...s.planTasks, [key]: !s.planTasks[key] } })),
     toggleBusy: (day) => update((s) => ({ ...s, busyDays: { ...s.busyDays, [day]: !s.busyDays[day] } })),
     setStartDate: (d) => update((s) => ({ ...s, startDate: d })),
@@ -164,9 +164,9 @@ export function useStore() {
   return s;
 }
 
-/** Questions that should be re-attempted: wrong and unresolved, or marked low confidence. */
-export function reattemptQueue(s: AppState): string[] {
-  const wrong = Object.entries(s.errors).filter(([, e]) => !e.resolved).map(([id]) => id);
+/** Questions to reattempt now: misses that are due again (see review.ts), and questions marked low confidence. */
+export function reattemptQueue(s: AppState, now = Date.now()): string[] {
+  const wrong = Object.entries(s.errors).filter(([, e]) => isDue(e, now)).map(([id]) => id);
   const low = Object.entries(s.confidence).filter(([id, c]) => c === 1 && !wrong.includes(id)).map(([id]) => id);
   return [...wrong, ...low].filter((id) => QMAP[id]);
 }

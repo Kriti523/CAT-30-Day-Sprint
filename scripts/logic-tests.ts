@@ -1,11 +1,13 @@
 // Logic tests: run with `npm test` (bundled by esbuild, executed by node).
-import { QUESTIONS, SETS, QMAP, isCorrect, expandRefs, normalise } from '../src/lib/data';
+import { QUESTIONS, SETS, QMAP, isCorrect, expandRefs, normalise, displayOrder, letters } from '../src/lib/data';
 import { PLAN } from '../src/data/plan';
 import { RANKED, classify } from '../src/data/priorities';
 import { buildSection, scoreSection, marksFor } from '../src/lib/tests';
 import { emptyState } from '../src/lib/store';
 import { SECTIONS } from '../src/types';
 import { buildSchedule } from '../src/lib/schedule';
+import { afterAttempt, isDue } from '../src/lib/review';
+import { streak } from '../src/lib/stats';
 import { claimLicense, type ClaimDeps } from '../supabase/functions/claim-license/claim';
 
 let pass = 0; const fails: string[] = [];
@@ -21,7 +23,15 @@ for (const q of QUESTIONS) {
   else ok(!isCorrect(q, '999999'), `${q.id} wrong TITA rejected`);
   ok(!isCorrect(q, ''), `${q.id} empty rejected`);
   ok(q.solution.length > 0 && !!q.hint && !!q.trap && !!q.note && !!q.fast, `${q.id} complete`);
-  ok(!/⟦/.test(JSON.stringify(q)), `${q.id} no unresolved option markers`);
+  {
+    // Option references are kept as ⟦X⟧ so they follow re-ordered options; only shuffled MCQs may use them.
+    const text = [...q.solution, q.fast, q.hint, q.trap, q.note].join(' ');
+    const marks = text.match(/⟦[^⟧]*⟧/g) ?? [];
+    ok(marks.every((m) => /^⟦[A-D]⟧$/.test(m)) && (marks.length === 0 || (q.type === 'MCQ' && !q.noshuffle && !!q.options && marks.every((m) => 'ABCD'.indexOf(m[1]) < q.options!.length))), `${q.id} option markers are valid`);
+    const order = displayOrder(q, 1);
+    ok(!/[⟦⟧]/.test(letters(text, order)) && !/[⟦⟧]/.test(letters(text)), `${q.id} markers all resolve`);
+    if (order) ok(order.indexOf(Number(q.answer)) !== Number(q.answer) && [...order].sort().join() === q.options!.map((_, i) => i).join(), `${q.id} reattempt order moves the answer`);
+  }
   if (q.setId) ok(!!SETS.find((s) => s.id === q.setId), `${q.id} set exists`);
 }
 ok(isCorrect(QMAP['Q018'].type === 'TITA' ? QMAP['Q018'] : QMAP['Q036'], QMAP['Q036'].answer + ' '), 'TITA trims whitespace');
@@ -85,6 +95,33 @@ ok(new Set(RANKED.map((t) => t.cls)).size === 4, 'all four classes used');
     ok(sch.length === 29 - start && new Set(ids).size === ids.length, `start 11-${start}: one entry per day, no repeats`);
   }
 }
+// Spaced reattempts: a miss comes back after 1, 3 and 7 days; correct answers before they are due don't count
+{
+  const day = (n: number, h = 10) => new Date(2026, 9, 14 + n, h).getTime();
+  let e = afterAttempt(undefined, false, day(0))!;
+  ok(!e.resolved && e.stage === 0 && !isDue(e, day(0, 23)) && isDue(e, day(1, 0)), 'a miss is due from the next day');
+  ok(afterAttempt(e, true, day(0, 11)) === e, 'right straight after the solution does not count');
+  e = afterAttempt(e, true, day(1))!; ok(e.stage === 1 && !isDue(e, day(3)) && isDue(e, day(4, 0)), 'first correct reattempt: back in 3 days');
+  e = afterAttempt(e, true, day(4))!; ok(e.stage === 2 && !e.resolved && isDue(e, day(11, 0)), 'second: back in 7 days');
+  e = afterAttempt(e, true, day(11))!; ok(e.resolved, 'third correct reattempt resolves it');
+  const again = afterAttempt(e, false, day(12))!; ok(!again.resolved && again.stage === 0 && again.addedAt === e.addedAt, 'missing it again restarts the schedule');
+  ok(afterAttempt(undefined, true, day(0)) === undefined, 'a right answer on a new question adds nothing');
+  ok(afterAttempt({ addedAt: 1, resolved: false }, true, day(0))!.stage === 1, 'entries from before scheduling count as due');
+}
+
+// Streak: consecutive days with practice
+{
+  const st = emptyState();
+  const at = (d: number, h = 9) => new Date(2026, 9, d, h).getTime();
+  const now = new Date(2026, 9, 20, 18);
+  ok(streak(st, now) === 0, 'no practice, no streak');
+  st.attempts = { Q001: { n: 3, correct: true, everCorrect: true, last: '0', t: 30, at: at(19), history: [{ c: true, t: 30, at: at(17) }, { c: false, t: 30, at: at(18) }, { c: true, t: 30, at: at(19) }] } };
+  ok(streak(st, now) === 3, 'today not practised yet keeps the streak to yesterday (3)');
+  st.tests = [{ id: 'T', kind: 'sectional', sections: ['QA'], startedAt: at(20), finishedAt: at(20, 10), qids: [], answers: {}, score: 0, perSection: {} }];
+  ok(streak(st, now) === 4, 'a finished test today extends it (4)');
+  ok(streak(st, new Date(2026, 9, 22, 9)) === 0, 'a missed day breaks it');
+}
+
 // License claims (the claim-license function's logic, with a fake Gumroad and database)
 async function licenseTests() {
   const owners = new Map<string, string>();

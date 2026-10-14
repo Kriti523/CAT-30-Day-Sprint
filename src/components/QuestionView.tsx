@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { Confidence, Question, QSet } from '../types';
 import { ERROR_REASONS } from '../types';
-import { SETMAP, answerLabel, fmtTime, isCorrect } from '../lib/data';
+import { SETMAP, answerLabel, displayOrder, fmtTime, isCorrect, letters, optionLetter } from '../lib/data';
 import { useStore } from '../lib/store';
 import { DiffTag, SectionTag, StatusPill } from './ui';
 import { CAT, Donut, GroupedBars } from './charts';
@@ -134,23 +134,24 @@ export function QuestionTools({ q, wrong }: { q: Question; wrong: boolean }) {
 }
 
 /* ---------------- solution block ---------------- */
-export function Solution({ q, given }: { q: Question; given?: string }) {
+export function Solution({ q, given, order }: { q: Question; given?: string; order?: number[] }) {
   const ok = given !== undefined && isCorrect(q, given);
+  const t = (x: string) => letters(x, order);
   return (
     <div className="mt-4 grid gap-3">
       <div className="flex flex-wrap items-center gap-2">
         {given !== undefined && given !== '' ? (ok ? <StatusPill tone="good">✓ Correct</StatusPill> : <StatusPill tone="bad">✗ Incorrect</StatusPill>) : <StatusPill tone="neutral">Not answered</StatusPill>}
-        <span className="text-sm">Answer: <strong>{answerLabel(q)}</strong></span>
-        {given && !ok && <span className="text-sm text-muted">You answered: {q.type === 'MCQ' && q.options ? 'ABCD'[Number(given)] : given}</span>}
+        <span className="text-sm">Answer: <strong>{answerLabel(q, order)}</strong></span>
+        {given && !ok && <span className="text-sm text-muted">You answered: {q.type === 'MCQ' && q.options ? optionLetter(Number(given), order) : given}</span>}
       </div>
       <div className="rounded-lg p-3" style={{ background: 'var(--sunk)' }}>
         <div className="label mb-1">Step-by-step solution</div>
-        <ol className="list-decimal space-y-1 pl-5">{q.solution.map((s, i) => <li key={i}>{s}</li>)}</ol>
+        <ol className="list-decimal space-y-1 pl-5">{q.solution.map((s, i) => <li key={i}>{t(s)}</li>)}</ol>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
-        <div><div className="label mb-0.5">Fast method</div><p>{q.fast}</p></div>
-        <div><div className="label mb-0.5">Common mistake / trap</div><p>{q.trap}</p></div>
-        <div className="sm:col-span-2"><div className="label mb-0.5">Revision note</div><p>{q.note}</p></div>
+        <div><div className="label mb-0.5">Fast method</div><p>{t(q.fast)}</p></div>
+        <div><div className="label mb-0.5">Common mistake / trap</div><p>{t(q.trap)}</p></div>
+        <div className="sm:col-span-2"><div className="label mb-0.5">Revision note</div><p>{t(q.note)}</p></div>
       </div>
       {q.evidence && q.evidence.length > 0 && (
         <div>
@@ -185,16 +186,17 @@ function Keypad({ value, onChange, disabled }: { value: string; onChange: (v: st
 }
 
 /** `exam`: typed answers come only from the on-screen keypad, as in the CAT. */
-export function AnswerInput({ q, value, onChange, locked, reveal, exam = false }: { q: Question; value: string; onChange: (v: string) => void; locked?: boolean; reveal?: boolean; exam?: boolean }) {
+export function AnswerInput({ q, value, onChange, locked, reveal, exam = false, order }: { q: Question; value: string; onChange: (v: string) => void; locked?: boolean; reveal?: boolean; exam?: boolean; order?: number[] }) {
   if (q.type === 'MCQ' && q.options) {
+    const shown = order ?? q.options.map((_, i) => i);
     return (
       <div className="grid gap-2" role="radiogroup" aria-label="Options">
-        {q.options.map((o, i) => {
+        {shown.map((i, p) => {
           const sel = value === String(i);
           const cls = reveal ? (String(q.answer) === String(i) ? 'is-right' : sel ? 'is-wrong' : '') : '';
           return (
             <button key={i} role="radio" aria-checked={sel} disabled={locked} className={`opt ${cls}`} onClick={() => onChange(String(i))}>
-              <span className="letter">{'ABCD'[i]}</span><span>{o}</span>
+              <span className="letter">{'ABCD'[p]}</span><span>{q.options![i]}</span>
             </button>
           );
         })}
@@ -247,6 +249,9 @@ export function QuestionView({ q, onNext, onPrev, position }: { q: Question; onN
 
   const submit = () => { if (value === '') return; record(q.id, value, sec); setSubmitted(value); };
   const prev = state.attempts[q.id];
+  // Fixed when the question opens, so it doesn't change once this attempt is recorded.
+  const order = useMemo(() => displayOrder(q, prev?.n ?? 0), [q.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const before = useMemo(() => prev, [q.id]); // eslint-disable-line react-hooks/exhaustive-deps -- the attempt before this one
   const over = sec > q.time;
 
   const body = (
@@ -258,11 +263,12 @@ export function QuestionView({ q, onNext, onPrev, position }: { q: Question; onN
         <DiffTag d={q.difficulty} />
         <span className="chip">{q.type}</span>
         <span className="chip num" title="Estimated solving time">~{fmtTime(q.time)}</span>
-        {prev && <StatusPill tone={prev.correct ? 'good' : 'bad'}>Last try: {prev.correct ? 'right' : 'wrong'}</StatusPill>}
+        {before && <StatusPill tone={before.correct ? 'good' : 'bad'}>Previous try: {before.correct ? 'right' : 'wrong'}</StatusPill>}
+        {order && <span className="chip" title="Options are re-ordered on a reattempt">Options shuffled</span>}
       </div>
       <div className="mb-4 text-[1.02rem]"><RichText text={q.text} /></div>
-      <AnswerInput q={q} value={submitted ?? value} onChange={setValue} locked={submitted !== null} reveal={submitted !== null} />
-      {hint && submitted === null && <div className="mt-3 rounded-lg p-3 text-sm" style={{ background: 'var(--accent-soft)' }}><span className="label">Hint · </span>{q.hint}</div>}
+      <AnswerInput q={q} order={order} value={submitted ?? value} onChange={setValue} locked={submitted !== null} reveal={submitted !== null} />
+      {hint && submitted === null && <div className="mt-3 rounded-lg p-3 text-sm" style={{ background: 'var(--accent-soft)' }}><span className="label">Hint · </span>{letters(q.hint, order)}</div>}
       <div className="no-print mt-4 flex flex-wrap items-center gap-2">
         {submitted === null ? (
           <>
@@ -280,18 +286,42 @@ export function QuestionView({ q, onNext, onPrev, position }: { q: Question; onN
             aria-label="Time on this question">{fmtTime(sec)}</span>
         </span>
       </div>
-      {submitted !== null && <Solution q={q} given={submitted} />}
+      {submitted !== null && <Solution q={q} given={submitted} order={order} />}
       <QuestionTools q={q} wrong={submitted !== null && submitted !== '' && !isCorrect(q, submitted)} />
     </div>
   );
 
   if (!set) return <div className="panel p-4 sm:p-6">{body}</div>;
+  return <SetSplit q={q} wide="lg"
+    setPanel={<div className="panel p-4 sm:p-6 lg:max-h-[80vh] lg:overflow-y-auto"><SetContext set={set} evidence={submitted !== null ? q.evidence : []} /></div>}
+    questionPanel={<div className="panel p-4 sm:p-6">{body}</div>} />;
+}
+
+/**
+ * A passage or data set beside its question. Side by side on wide screens; on narrower ones, tabs switch between
+ * them so nobody scrolls past the whole passage for every question. A new set opens on the set, the next question
+ * of the same set on the question.
+ */
+export function SetSplit({ q, setPanel, questionPanel, wide }: { q: Question; setPanel: ReactNode; questionPanel: ReactNode; wide: 'lg' | 'xl' }) {
+  const [pane, setPane] = useState<'set' | 'q'>('set');
+  const lastSet = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    setPane(lastSet.current === q.setId ? 'q' : 'set');
+    lastSet.current = q.setId;
+  }, [q.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const label = q.section === 'VARC' ? 'Passage' : 'Set';
+  const tabs = wide === 'lg' ? 'lg:hidden' : 'xl:hidden';
+  const show = wide === 'lg' ? 'lg:block' : 'xl:block';
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
-      <div className="panel p-4 sm:p-6 lg:max-h-[80vh] lg:overflow-y-auto">
-        <SetContext set={set} evidence={submitted !== null ? q.evidence : []} />
+    <div className={wide === 'lg' ? 'grid gap-4 lg:grid-cols-2' : 'grid gap-4 xl:grid-cols-2'}>
+      <div className={`${tabs} no-print flex gap-1`} role="tablist" aria-label={`${label} or question`}>
+        {(['set', 'q'] as const).map((p) => (
+          <button key={p} role="tab" aria-selected={pane === p} className="btn btn-sm flex-1 justify-center" onClick={() => setPane(p)}
+            style={pane === p ? { background: 'var(--ink)', color: 'var(--ground)', borderColor: 'var(--ink)' } : undefined}>{p === 'set' ? label : 'Question'}</button>
+        ))}
       </div>
-      <div className="panel p-4 sm:p-6">{body}</div>
+      <div className={`${pane === 'set' ? '' : 'hidden'} ${show}`}>{setPanel}</div>
+      <div className={`${pane === 'q' ? '' : 'hidden'} ${show}`}>{questionPanel}</div>
     </div>
   );
 }

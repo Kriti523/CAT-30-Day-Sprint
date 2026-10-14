@@ -36,14 +36,18 @@ byid = {q["id"]: q for q in QUESTIONS}
 sets = {s["id"]: s for s in SETS}
 
 # 0. Deterministic option shuffle so the answer key is not biased toward the
-#    position in which options were authored. Option-letter references in
-#    explanations are written as ⟦X⟧ markers and remapped here.
+#    position in which options were authored. Within each section the correct
+#    answer is spread evenly over A-D (seeded, so builds are reproducible).
+#    Option-letter references in explanations are written as ⟦X⟧ markers; they
+#    are remapped to the new positions and kept as markers, so the app can show
+#    the right letter even when it re-orders options for a reattempt.
 import random
 LET = "ABCD"
 TEXT_FIELDS = ("solution", "fast", "hint", "trap", "note")
 for s in SETS:
     if "⟦" in s["body"]:
         err(f"set {s['id']} body contains an option marker")
+shufflable = []
 for q in QUESTIONS:
     if q["type"] != "MCQ" or q.get("noshuffle"):
         for f in TEXT_FIELDS:
@@ -51,16 +55,30 @@ for q in QUESTIONS:
             if ("⟦" in "".join(v)) if isinstance(v, list) else ("⟦" in v):
                 err(f"{q['id']} unshuffled question has option markers")
         continue
+    shufflable.append(q)
+target = {}
+for sec in ("VARC", "DILR", "QA"):
+    qs = sorted((q for q in shufflable if q["section"] == sec), key=lambda q: q["id"])
+    slots = [i % 4 for i in range(len(qs))]
+    random.Random("cat30-key:" + sec).shuffle(slots)
+    target.update({q["id"]: t for q, t in zip(qs, slots)})
+for q in shufflable:
     rng = random.Random("cat30:" + q["id"])
-    perm = list(range(len(q["options"])))
-    rng.shuffle(perm)                       # new position i holds old option perm[i]
+    others = [i for i in range(len(q["options"])) if i != q["answer"]]
+    rng.shuffle(others)
+    t = target[q["id"]]
+    perm = others[:t] + [q["answer"]] + others[t:]   # new position i holds old option perm[i]
     newpos = {old: new for new, old in enumerate(perm)}
     q["options"] = [q["options"][p] for p in perm]
     q["answer"] = newpos[q["answer"]]
-    remap = lambda t: re.sub(r"⟦([A-D])⟧", lambda m: LET[newpos[LET.index(m.group(1))]], t)
+    remap = lambda t: re.sub(r"⟦([A-D])⟧", lambda m: "⟦" + LET[newpos[LET.index(m.group(1))]] + "⟧", t)
     for f in TEXT_FIELDS:
         v = q[f]
         q[f] = [remap(x) for x in v] if isinstance(v, list) else remap(v)
+for sec in ("VARC", "DILR", "QA"):
+    keys = Counter(q["answer"] for q in QUESTIONS if q["section"] == sec and q["type"] == "MCQ")
+    if keys and max(keys.values()) - min(keys.get(i, 0) for i in range(4)) > 3:
+        err(f"{sec} answer key is unbalanced: {dict(keys)}")
 
 # 1. counts
 cnt = Counter(q["section"] for q in QUESTIONS)

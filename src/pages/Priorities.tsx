@@ -55,7 +55,8 @@ export default function Priorities() {
             const isOpen = open === t.topic;
             return (
               <li key={t.topic} className="rounded-lg" style={{ background: isOpen ? 'var(--sunk)' : undefined }}>
-                <button className="grid w-full items-center gap-x-3 gap-y-1 rounded-lg px-2 py-2 text-left sm:grid-cols-[1fr_minmax(8rem,40%)_3rem]" onClick={() => setOpen(isOpen ? null : t.topic)} aria-expanded={isOpen}>
+                <div className="flex items-center gap-2">
+                <button className="grid min-w-0 flex-1 items-center gap-x-3 gap-y-1 rounded-lg px-2 py-2 text-left sm:grid-cols-[1fr_minmax(8rem,40%)_3rem]" onClick={() => setOpen(isOpen ? null : t.topic)} aria-expanded={isOpen}>
                   <span className="flex items-center gap-2"><span className="dot" style={{ background: secVar(t.section) }} /><span>{t.topic}</span><span className="text-xs text-muted">{t.section}</span></span>
                   <span className="flex items-center gap-2">
                     <span className="bar-track flex-1" style={{ height: 12 }} title={`${t.topic}: ${t.score} (${t.cls})`}><span className="bar-fill block" style={{ width: `${t.score}%`, background: CLS_COLOR[t.cls] }} /></span>
@@ -63,6 +64,10 @@ export default function Priorities() {
                   </span>
                   <span className="num text-right font-bold">{t.score}</span>
                 </button>
+                {qs.length > 0
+                  ? <button className="btn btn-sm no-print" onClick={() => startSession(qs.map((q) => q.id), t.topic)} aria-label={`Practise ${t.topic}`}>Practise</button>
+                  : <span className="w-[4.6rem]" aria-hidden />}
+                </div>
                 {isOpen && (
                   <div className="grid gap-3 px-3 pb-3 md:grid-cols-2">
                     <dl className="grid gap-1 text-sm">

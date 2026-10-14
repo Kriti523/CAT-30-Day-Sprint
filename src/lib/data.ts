@@ -25,10 +25,33 @@ export function isCorrect(q: Question, given: string): boolean {
   return !Number.isNaN(na) && !Number.isNaN(ng) && Math.abs(na - ng) < 1e-9;
 }
 
-export function answerLabel(q: Question): string {
+/* Option order. `order[p]` is the stored option shown at position p; undefined means the stored order.
+ * Explanations refer to options as ⟦X⟧ (X = stored letter) so they follow whatever order is shown. */
+const LET = 'ABCD';
+const shownAt = (stored: number, order?: number[]) => (order ? order.indexOf(stored) : stored);
+
+/** The letter an option is shown with. */
+export const optionLetter = (stored: number, order?: number[]) => LET[shownAt(stored, order)];
+
+/** Replaces ⟦X⟧ option references in explanation text with the letters as shown. */
+export const letters = (text: string, order?: number[]) =>
+  text.replace(/⟦([A-D])⟧/g, (_, l: string) => optionLetter(LET.indexOf(l), order));
+
+/** A fresh option order for a reattempt, so the answer isn't remembered by its letter. Stored order on a first try. */
+export function displayOrder(q: Question, priorAttempts: number): number[] | undefined {
+  if (q.type !== 'MCQ' || !q.options || q.noshuffle || priorAttempts < 1) return undefined;
+  let h = priorAttempts * 7919;
+  for (const c of q.id) h = (h * 31 + c.charCodeAt(0)) % 2147483647;
+  const order = shuffle(q.options.map((_, i) => i), h);
+  // Make sure the correct answer moves, otherwise the reshuffle teaches nothing.
+  if (order.indexOf(Number(q.answer)) === Number(q.answer)) order.push(order.shift()!);
+  return order;
+}
+
+export function answerLabel(q: Question, order?: number[]): string {
   if (q.type === 'MCQ' && q.options) {
     const i = Number(q.answer);
-    return `${'ABCD'[i]}. ${q.options[i]}`;
+    return `${optionLetter(i, order)}. ${q.options[i]}`;
   }
   return String(q.answer);
 }
