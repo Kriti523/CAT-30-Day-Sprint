@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { PRIMER_BY_TOPIC } from '../data/primers';
+import { primerId } from './Primers';
 import { CLASSES, RANKED, WEIGHTS, type PriorityClass } from '../data/priorities';
 import { QUESTIONS } from '../lib/data';
 import { useNav } from '../lib/nav';
@@ -20,7 +22,11 @@ export default function Priorities() {
   const [sec, setSec] = useState<Section | 'All'>('All');
   const [open, setOpen] = useState<string | null>(null);
   const { state } = useStore();
-  const { startSession } = useNav();
+  const { startSession, go } = useNav();
+  const openPrimer = (topic: string) => {
+    go('primers');
+    setTimeout(() => document.getElementById(primerId(topic))?.scrollIntoView({ block: 'start' }), 50);
+  };
   const rows = RANKED.filter((t) => sec === 'All' || t.section === sec);
 
   return (
@@ -64,6 +70,7 @@ export default function Priorities() {
                   </span>
                   <span className="num text-right font-bold">{t.score}</span>
                 </button>
+                {PRIMER_BY_TOPIC[t.topic] && <button className="btn btn-sm btn-ghost no-print" onClick={() => openPrimer(t.topic)} aria-label={`Primer for ${t.topic}`}>Primer</button>}
                 {qs.length > 0
                   ? <button className="btn btn-sm no-print" onClick={() => startSession(qs.map((q) => q.id), t.topic)} aria-label={`Practise ${t.topic}`}>Practise</button>
                   : <span className="w-[4.6rem]" aria-hidden />}

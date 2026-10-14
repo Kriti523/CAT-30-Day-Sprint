@@ -82,7 +82,7 @@ export default function Bank() {
 
   return (
     <div>
-      <PageHead eyebrow="100 original questions per section" title="Question bank">
+      <PageHead eyebrow={`${QUESTIONS.length} original questions`} title="Question bank">
         Every question has a hint, a step-by-step solution, a fast method, the common trap and a one-line revision note. Search, filter, then practise the filtered list or a random draw from it.
       </PageHead>
 

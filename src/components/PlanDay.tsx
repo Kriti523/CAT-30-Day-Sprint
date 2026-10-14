@@ -66,6 +66,8 @@ export function PlanDayCard({ s, total, compact = false }: { s: ScheduledDay; to
                     {b.action === 'reattempt' && <button className="btn btn-sm" disabled={!queue.length} onClick={() => runAction('reattempt', b.title)}>Reattempt queue · {queue.length}</button>}
                     {b.testSection && <button className="btn btn-sm" onClick={() => go('tests', { testSection: b.testSection })}>Open {b.testSection === 'FULL' ? 'full mock' : `${b.testSection} sectional`}</button>}
                     {b.mode === 'Mock' && !b.testSection && <button className="btn btn-sm btn-ghost" onClick={() => go('mocks')}>Log mock analysis</button>}
+                    {b.mode === 'Learn' && (b.section === 'QA' || /formula/i.test(b.detail) ? <button className="btn btn-sm btn-ghost" onClick={() => go('formulas')}>Formula sheets</button> : null)}
+                    {b.mode === 'Learn' && <button className="btn btn-sm btn-ghost" onClick={() => go('primers')}>Topic primers</button>}
                   </div>
                 </div>
               </li>

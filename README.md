@@ -46,13 +46,13 @@ A single view of your preparation progress.
 
 ### 📚 Question Bank
 
-**300 original CAT-style questions**
+**354 original CAT-style questions**
 
 | Section | Content |
 |---|---|
 | 🟣 VARC | 16 RC passages + 36 Verbal Ability questions |
 | 🟠 DILR | 20 sets × 5 questions |
-| 🟢 QA | 100 Quantitative Aptitude questions |
+| 🟢 QA | 154 Quantitative Aptitude questions (every topic has at least 5) |
 
 Each question includes:
 
@@ -185,11 +185,11 @@ Topic priority scores are derived from the available evidence and are intended a
 
 ## 🧠 What's Inside?
 
-### 300 Questions
+### 354 Questions
 
 - 100 VARC
 - 100 DILR
-- 100 QA
+- 154 QA
 
 ### Study Resources
 

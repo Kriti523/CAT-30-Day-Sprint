@@ -5,6 +5,8 @@ from playwright.sync_api import sync_playwright
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 URL = 'file://' + os.path.join(ROOT, 'dist', 'index.html')
 SHOTS = os.path.join(ROOT, 'test-shots')
+QS = json.load(open(os.path.join(ROOT, 'src', 'data', 'questions.json')))
+count = lambda **kw: sum(1 for q in QS if all(q.get(k) == v for k, v in kw.items()))
 results, errors = [], []
 def check(cond, msg):
     results.append((bool(cond), msg)); print(('PASS ' if cond else 'FAIL ') + msg)
@@ -43,11 +45,11 @@ with sync_playwright() as p:
     page.fill('#bank-search', '')
     page.select_option('#bank-diff', 'Hard')
     n_hard = page.locator('[data-qid]').count()
-    check(n_hard == 20, f'QA Hard filter = {n_hard} (expected 20)')
+    check(n_hard == count(section='QA', difficulty='Hard'), f'QA Hard filter = {n_hard} (expected {count(section="QA", difficulty="Hard")})')
     page.select_option('#bank-diff', '')
     page.select_option('#bank-type', 'TITA')
     n_tita = page.locator('[data-qid]').count()
-    check(n_tita == 34, f'QA TITA filter = {n_tita} (expected 34)')
+    check(n_tita == count(section='QA', type='TITA'), f'QA TITA filter = {n_tita} (expected {count(section="QA", type="TITA")})')
     page.select_option('#bank-type', '')
     page.get_by_role('tab', name=re.compile('DILR')).click()
     check(page.locator('[data-qid]').count() == 100, 'DILR shows 100')
@@ -219,6 +221,12 @@ with sync_playwright() as p:
     check(page.locator('text=/percentile in CAT 2025|95th percentile needed in CAT 2025/').count() == 1, 'mock results give an indicative percentile band')
     page.get_by_role('button', name='Add your reflections').click()
     check(page.locator('text=/In-app mock \\d/').count() >= 1, 'a full mock is logged on Mock analysis automatically')
+
+    # --- Topic primers: a lesson per Must-Master topic, linked from Topic priorities
+    page.get_by_role('button', name='Topic priorities').first.click()
+    page.get_by_role('button', name='Primer for Ratio, proportion, averages & mixtures').click(); page.wait_for_timeout(300)
+    check(page.locator('text=Tea at ₹40/kg is mixed with tea at ₹70/kg').count() == 1 and page.locator('text=Topic primers').count() >= 1, 'a priority opens its topic primer')
+    check(page.get_by_role('button', name=re.compile(r'^Practise \d+ Qs$')).count() == 10, 'every primer except set selection (a skill, not a question type) has a Practise button')
 
     # --- Other pages render
     for name, marker in [('Paper trends', 'Previous-paper trends'), ('Topic priorities', 'Topic priorities'), ('Formula sheets', 'Formula & revision sheets'),

@@ -1,4 +1,5 @@
 import { SOURCES } from '../data/research';
+import { QUESTIONS } from '../lib/data';
 import { PageHead, Panel, StatusPill } from '../components/ui';
 
 export default function SourcesPage() {
@@ -29,7 +30,7 @@ export default function SourcesPage() {
             <li><StatusPill tone="neutral">Not verified</StatusPill> 2023 TITA counts per section could not be confirmed from two sources.</li>
             <li><StatusPill tone="neutral">Official facts</StatusPill> The exam date and pattern come from the CAT 2026 notification as reported by several independent outlets. iimcat.ac.in is always the final word; check it before exam day.</li>
             <li><StatusPill tone="neutral">Estimates</StatusPill> Percentile–score figures come from one source and are scaled scores that vary with paper difficulty.</li>
-            <li><StatusPill tone="accent">Originality</StatusPill> No CAT question or passage is reproduced. All 300 questions and 16 passages in this app were written for it, including DILR data, which is invented.</li>
+            <li><StatusPill tone="accent">Originality</StatusPill> No CAT question or passage is reproduced. All {QUESTIONS.length} questions and 16 passages in this app were written for it, including DILR data, which is invented.</li>
           </ul>
         </Panel>
       </div>

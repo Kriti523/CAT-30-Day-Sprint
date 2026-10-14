@@ -4,6 +4,10 @@ import { useStore } from './lib/store';
 import { useAuth } from './lib/auth';
 import type { SyncStatus } from './lib/sync';
 import { sectionLeft } from './lib/tests';
+import { NEXT_EXAM } from './data/research';
+import { QUESTIONS } from './lib/data';
+
+const QUESTION_COUNT = QUESTIONS.length;
 import { fmtTime } from './lib/data';
 import type { RunningTest } from './types';
 import { applyTheme, savedTheme, type Theme } from './lib/theme';
@@ -23,6 +27,7 @@ import SourcesPage from './pages/Sources';
 import DataPage from './pages/Data';
 import AccountPage from './pages/Account';
 import Setup from './pages/Setup';
+import Primers from './pages/Primers';
 import Legal from './pages/Legal';
 import { Unlock } from './components/Unlock';
 import { SAMPLE_IDS } from './data/sample';
@@ -37,6 +42,7 @@ const NAV: { page: Page; label: string; group: string }[] = [
   { page: 'mocks', label: 'Mock analysis', group: 'Prepare' },
   { page: 'trends', label: 'Paper trends', group: 'Understand' },
   { page: 'priorities', label: 'Topic priorities', group: 'Understand' },
+  { page: 'primers', label: 'Topic primers', group: 'Understand' },
   { page: 'formulas', label: 'Formula sheets', group: 'Understand' },
   { page: 'strategy', label: 'Exam strategy', group: 'Understand' },
   { page: 'sources', label: 'Sources', group: 'Understand' },
@@ -143,7 +149,7 @@ export default function App() {
             <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg>
           </button>
           <span className="display text-lg font-bold">CAT Sprint</span>
-          <span className={`ml-auto text-xs text-muted ${auth.enabled ? 'hidden md:inline' : ''}`}>30 days · 300 questions</span>
+          <span className={`ml-auto text-xs text-muted ${auth.enabled ? 'hidden md:inline' : ''}`}>{QUESTION_COUNT} questions · CAT {NEXT_EXAM.year}</span>
           {PAYWALL && !auth.entitled && (
             <button className="chip ml-auto md:ml-0" style={{ color: 'var(--accent)', borderColor: 'var(--accent)' }} onClick={() => go('unlock')}>Free sample</button>
           )}
@@ -220,6 +226,7 @@ export default function App() {
                   {page === 'errors' && <Errors />}
                   {page === 'trends' && <Trends />}
                   {page === 'priorities' && <Priorities />}
+                  {page === 'primers' && <Primers />}
                   {page === 'formulas' && <Formulas />}
                   {page === 'mocks' && <Mocks />}
                   {page === 'strategy' && <Strategy />}

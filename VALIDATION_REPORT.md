@@ -1,24 +1,28 @@
 # Validation Report
 
-Run on 23 September 2026. Reproduce with `python3 content/build_data.py`, `npm test` and `python3 scripts/ui_test.py`.
+First run on 23 September 2026; re-run on 14 October 2026 after 54 QA questions were added. Reproduce with `python3 content/build_data.py`, `npm test`, `python3 scripts/ui_test.py` and `python3 scripts/auth_test.py`.
 
 ## Summary
 | Check | Result |
 |---|---|
-| VARC / DILR / QA question counts | **100 / 100 / 100** ✅ |
-| Every question complete (topic, subtopic, difficulty, time, answer, solution, fast method, hint, trap, note) | ✅ 300/300 |
-| QA answers independently recomputed in Python | ✅ 100/100 match; no distractor equals the computed value |
+| VARC / DILR / QA question counts | **100 / 100 / 154** ✅ (every QA subtopic has at least 5) |
+| Every question complete (topic, subtopic, difficulty, time, answer, solution, fast method, hint, trap, note) | ✅ 354/354 |
+| QA answers independently recomputed in Python | ✅ 154/154 match; no distractor equals the computed value |
 | DILR answers re-derived by brute-force set solvers | ✅ 100/100 match; arrangement and logic sets have a unique solution (solver asserts uniqueness) |
 | VARC RC answers supported by passage text | ✅ 64/64 have verbatim evidence quotes found in the passage |
 | VARC VA structural checks | ✅ 36/36 (jumble keys are permutations; odd-one-out keys in range; summary/completion evidence present) |
 | Exact duplicate questions | ✅ none |
-| Near-duplicates (text similarity > 0.85) | ✅ none (one pair found and replaced during authoring) |
+| Near-duplicates (text similarity > 0.85) | ✅ none (five new questions were replaced during authoring) |
 | MCQ option sanity (4 distinct options, valid key) | ✅ |
-| Answer-key position bias | ✅ removed by seeded shuffle (A/B/C/D spread per section in `content/validation_result.json`) |
-| Logic tests (`npm test`) | ✅ 2,337 passed, 0 failed |
-| Browser tests (`scripts/ui_test.py`, Chromium) | ✅ 42 passed, 0 failed |
+| Answer-key position balance | ✅ correct answers spread evenly over A–D in each section (220 MCQs: 55 / 57 / 55 / 53); the build fails if a section drifts |
+| Option-letter references in explanations | ✅ every ⟦X⟧ marker names a real option and resolves for reshuffled reattempts |
+| Logic tests (`npm test`) | ✅ 3,289 passed, 0 failed |
+| Browser tests (`scripts/ui_test.py`, Chromium) | ✅ 78 passed, 0 failed |
+| Accounts, sync and paid access (`scripts/auth_test.py`, fake Supabase) | ✅ 37 passed, 0 failed |
+| Database security rules (`supabase/schema.sql` on Postgres) | ✅ 22 checks: own rows only, no self-granted access, reports write-only |
+| Accessibility (axe-core 4.13, every page, light and dark) | ✅ no violations |
 | TypeScript (strict) | ✅ 0 errors |
-| Production bundle | ✅ `dist/index.html` (single file, ~650 KB) builds without errors or warnings |
+| Production bundle | ✅ `dist/index.html` (single file) builds without errors |
 
 ## How answers were validated
 - **QA:** each question has a `check` function that computes the answer independently, often by brute force (for example, enumerating all integer solutions, iterating permutations or simulating a race). The build fails if the key differs or if a distractor also matches.
@@ -36,10 +40,13 @@ Run on 23 September 2026. Reproduce with `python3 content/build_data.py`, `npm t
 ## Browser test log
 | Check | Result |
 |---|---|
-| dashboard renders | ✅ |
-| search "remainder" returns 4 QA results | ✅ |
-| QA Hard filter = 20 (expected 20) | ✅ |
-| QA TITA filter = 34 (expected 34) | ✅ |
+| first run opens the plan setup | ✅ |
+| setup previews a shortened plan for 20 days | ✅ |
+| setup previews a 46-day plan with consolidation days | ✅ |
+| dashboard shows the target | ✅ |
+| search "remainder" returns 7 QA results | ✅ |
+| QA Hard filter = 36 (expected 36) | ✅ |
+| QA TITA filter = 62 (expected 62) | ✅ |
 | DILR shows 100 | ✅ |
 | VARC shows 100 | ✅ |
 | question timer running (0:02) | ✅ |
@@ -53,14 +60,38 @@ Run on 23 September 2026. Reproduce with `python3 content/build_data.py`, `npm t
 | confidence persisted | ✅ |
 | attempt persisted | ✅ |
 | error log entry persisted | ✅ |
-| reattempt queue has wrong + low-confidence (2) | ✅ |
+| a miss comes back tomorrow; the low-confidence question is due now | ✅ |
 | DILR bar chart renders | ✅ |
 | timed random session shows countdown | ✅ |
-| calendar shows 30 days | ✅ |
+| calendar runs from the start date to the exam | ✅ |
 | busy-day fallback shows | ✅ |
 | QA sectional has 22 questions | ✅ |
 | test result page | ✅ |
 | VARC sectional has 24 questions | ✅ |
+| DILR sectional has 22 questions | ✅ |
+| test answers are typed on the on-screen keypad | ✅ |
+| keypad enters a negative answer | ✅ |
+| DILR test includes a typed-answer question | ✅ |
+| calculator works (12 × 3 = 36) | ✅ |
+| leaving a test shows a Resume banner | ✅ |
+| test resumes with answers kept (Sectional · 1/22 answered) | ✅ |
+| test survives a reload | ✅ |
+| palette shows CAT states | ✅ |
+| discarding ends the test without saving it | ✅ |
+| Back returns to the previous page | ✅ |
+| practice session survives a reload | ✅ |
+| exam-day checklist ticks are kept | ✅ |
+| a reattempt shows shuffled options and the previous result | ✅ |
+| dashboard shows the practice streak | ✅ |
+| keyboard: B then Enter answers a question | ✅ |
+| without accounts, a report is shown ready to copy | ✅ |
+| theme switch: Dark applies the dark theme | ✅ |
+| theme choice survives a reload | ✅ |
+| mock results show benchmarks and set review | ✅ |
+| mock results give an indicative percentile band | ✅ |
+| a full mock is logged on Mock analysis automatically | ✅ |
+| a priority opens its topic primer | ✅ |
+| every primer except set selection (a skill, not a question type) has a Practise button | ✅ |
 | Paper trends page renders | ✅ |
 | Topic priorities page renders | ✅ |
 | Formula sheets page renders | ✅ |
@@ -70,12 +101,21 @@ Run on 23 September 2026. Reproduce with `python3 content/build_data.py`, `npm t
 | Your data page renders | ✅ |
 | mock saved and trend shown | ✅ |
 | priority ratings expand | ✅ |
+| desktop: hamburger hides sidebar, page widens (1134 -> 1366) | ✅ |
+| desktop: closed sidebar stays closed after reload | ✅ |
+| desktop: hamburger brings sidebar back | ✅ |
 | mobile: no horizontal page scroll (390 <= 390) | ✅ |
 | dark theme applied (rgb(16, 19, 18)) | ✅ |
-| mobile 30-day plan: no horizontal scroll (390) | ✅ |
+| mobile: menu drawer starts closed | ✅ |
+| mobile: drawer closes after picking a page | ✅ |
+| mobile Study plan: no horizontal scroll (390) | ✅ |
 | mobile Paper trends: no horizontal scroll (390) | ✅ |
 | mobile Topic priorities: no horizontal scroll (390) | ✅ |
 | mobile Sectional tests: no horizontal scroll (390) | ✅ |
+| mobile: hamburger opens the drawer | ✅ |
+| mobile: Escape closes the drawer | ✅ |
+| mobile: a passage opens on the Passage tab | ✅ |
+| mobile: the Question tab shows the options | ✅ |
 | data-theme=light overrides OS dark | ✅ |
 | no console/page errors ([]) | ✅ |
 
@@ -159,51 +199,51 @@ Run on 23 September 2026. Reproduce with `python3 content/build_data.py`, `npm t
   "sets": 20
  },
  "QA": {
-  "total": 100,
-  "mcq": 66,
-  "tita": 34,
+  "total": 154,
+  "mcq": 92,
+  "tita": 62,
   "difficulty": {
-   "Easy": 32,
-   "Medium": 48,
-   "Hard": 20
+   "Easy": 45,
+   "Medium": 73,
+   "Hard": 36
   },
   "topics": {
-   "Arithmetic": 38,
-   "Algebra": 33,
-   "Number Systems": 10,
-   "Geometry & Mensuration": 14,
-   "Modern Math": 5
+   "Arithmetic": 44,
+   "Algebra": 34,
+   "Number Systems": 30,
+   "Geometry & Mensuration": 30,
+   "Modern Math": 16
   },
   "subtopics": {
-   "Profit, Loss & Discount": 4,
-   "Percentages": 3,
-   "Simple & Compound Interest": 4,
+   "Profit, Loss & Discount": 5,
+   "Percentages": 5,
+   "Simple & Compound Interest": 5,
    "Ratio & Proportion": 5,
-   "Averages": 4,
-   "Mixtures & Alligation": 4,
+   "Averages": 5,
+   "Mixtures & Alligation": 5,
    "Time & Work": 6,
    "Time, Speed & Distance": 8,
    "Linear Equations": 6,
    "Inequalities & Modulus": 5,
    "Quadratic Equations": 6,
    "Logarithms, Surds & Indices": 6,
-   "Functions & Graphs": 4,
+   "Functions & Graphs": 5,
    "Progressions & Series": 6,
-   "Remainders & Cyclicity": 4,
-   "Factors": 2,
-   "Factorials": 1,
-   "Units Digit": 1,
-   "HCF & LCM": 1,
-   "Divisibility & Counting": 1,
-   "Triangles": 3,
-   "Circles": 4,
-   "Polygons": 1,
-   "Coordinate Geometry": 2,
-   "Quadrilaterals": 1,
-   "Mensuration": 3,
-   "Permutations": 1,
-   "Combinations": 2,
-   "Probability": 2
+   "Remainders & Cyclicity": 5,
+   "Factors": 5,
+   "Factorials": 5,
+   "Units Digit": 5,
+   "HCF & LCM": 5,
+   "Divisibility & Counting": 5,
+   "Triangles": 5,
+   "Circles": 5,
+   "Polygons": 5,
+   "Coordinate Geometry": 5,
+   "Quadrilaterals": 5,
+   "Mensuration": 5,
+   "Permutations": 5,
+   "Combinations": 5,
+   "Probability": 6
   },
   "sets": 0
  }

@@ -3,6 +3,7 @@ import { useAuth } from '../lib/auth';
 import { BUY_URL } from '../lib/config';
 import { useNav } from '../lib/nav';
 import { Panel } from './ui';
+import { QUESTIONS } from '../lib/data';
 
 /** Enter a Gumroad license key to unlock the signed-in account. */
 export function LicenseForm() {
@@ -29,7 +30,7 @@ export function LicenseForm() {
 }
 
 const INCLUDED = [
-  'All 300 questions with hints, solutions, fast methods and traps',
+  `All ${QUESTIONS.length} questions with hints, solutions, fast methods and traps`,
   'A day-by-day plan fitted to the days you have left',
   'Sectional tests and 68-question mocks in the CAT format',
   'Error log, spaced reattempts and mock analysis',

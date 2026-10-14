@@ -14,8 +14,14 @@ let pass = 0; const fails: string[] = [];
 const ok = (c: boolean, m: string) => { if (c) pass++; else fails.push(m); };
 
 // 1. counts
-for (const s of SECTIONS) ok(QUESTIONS.filter((q) => q.section === s).length === 100, `${s} count`);
-ok(new Set(QUESTIONS.map((q) => q.id)).size === 300, 'unique ids');
+const EXPECTED: Record<string, number> = { VARC: 100, DILR: 100, QA: 154 };
+for (const s of SECTIONS) ok(QUESTIONS.filter((q) => q.section === s).length === EXPECTED[s], `${s} count`);
+ok(new Set(QUESTIONS.map((q) => q.id)).size === QUESTIONS.length && QUESTIONS.length === 354, 'unique ids');
+{
+  const subs = new Map<string, number>();
+  for (const q of QUESTIONS) if (q.section === 'QA') subs.set(q.subtopic, (subs.get(q.subtopic) ?? 0) + 1);
+  ok([...subs.values()].every((n) => n >= 5), 'every QA subtopic has at least 5 questions');
+}
 // 2. every stored answer is accepted by the checker; wrong answers are rejected
 for (const q of QUESTIONS) {
   ok(isCorrect(q, String(q.answer)), `${q.id} key accepted`);

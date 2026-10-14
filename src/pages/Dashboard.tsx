@@ -47,9 +47,9 @@ export default function Dashboard() {
       <div className="order-2 grid gap-4 md:order-1 md:grid-cols-4">
         <Panel className="md:col-span-1">
           <div className="label">All sections</div>
-          <div className="mt-1 display text-4xl font-bold num">{total.attempted}<span className="text-lg text-muted">/300</span></div>
+          <div className="mt-1 display text-4xl font-bold num">{total.attempted}<span className="text-lg text-muted">/{QUESTIONS.length}</span></div>
           <div className="text-sm text-muted">questions attempted · accuracy {pct(total.accuracy)}</div>
-          <div className="mt-3"><Meter value={total.attempted} max={300} label="Questions attempted" /></div>
+          <div className="mt-3"><Meter value={total.attempted} max={QUESTIONS.length} label="Questions attempted" /></div>
           <div className="mt-3 text-sm"><span className="num font-semibold">{plan.done}</span>/{totalDays} plan days complete</div>
           <Streak />
         </Panel>
@@ -61,8 +61,8 @@ export default function Dashboard() {
               <div className="flex items-center gap-2"><span className="dot" style={{ background: secVar(s) }} /><span className="label">{s}</span></div>
               <div className="mt-1 text-xs text-muted">{SECTION_NAME[s]}</div>
               <div className="mt-2 flex items-baseline gap-2"><span className="display text-3xl font-bold num">{pct(a.accuracy)}</span><span className="text-sm text-muted">accuracy</span></div>
-              <div className="text-sm text-muted num">{a.attempted}/100 attempted{a.avgTime !== null && <> · {fmtTime(a.avgTime)} avg vs {fmtTime(est)} est.</>}</div>
-              <div className="mt-2"><Meter value={a.attempted} color={secVar(s)} label={`${s} attempted`} /></div>
+              <div className="text-sm text-muted num">{a.attempted}/{a.total} attempted{a.avgTime !== null && <> · {fmtTime(a.avgTime)} avg vs {fmtTime(est)} est.</>}</div>
+              <div className="mt-2"><Meter value={a.attempted} max={a.total} color={secVar(s)} label={`${s} attempted`} /></div>
               <button className="btn btn-sm btn-ghost mt-2 -ml-2" onClick={() => go('bank', { bankSection: s })}>Open {s} bank →</button>
             </Panel>
           );

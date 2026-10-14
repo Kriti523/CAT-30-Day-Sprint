@@ -12,7 +12,7 @@ sys.path.insert(0, HERE)
 import common
 from common import QUESTIONS, SETS, CHECKS, SET_SOLVERS, same
 
-MODULES = ["qa_arith", "qa_algebra", "qa_numgeo", "qa_mcq_convert",
+MODULES = ["qa_arith", "qa_algebra", "qa_numgeo", "qa_mcq_convert", "qa_extra",
            "dilr_1", "dilr_2", "dilr_3", "dilr_4",
            "varc_rc1", "varc_rc2", "varc_rc3", "varc_va"]
 
@@ -80,11 +80,12 @@ for sec in ("VARC", "DILR", "QA"):
     if keys and max(keys.values()) - min(keys.get(i, 0) for i in range(4)) > 3:
         err(f"{sec} answer key is unbalanced: {dict(keys)}")
 
-# 1. counts
+# 1. counts (QA has 54 more since qa_extra brought every subtopic to at least five)
+EXPECTED = {"VARC": 100, "DILR": 100, "QA": 154}
 cnt = Counter(q["section"] for q in QUESTIONS)
 for sec in ("VARC", "DILR", "QA"):
-    if cnt[sec] != 100:
-        err(f"{sec} has {cnt[sec]} questions (expected 100)")
+    if cnt[sec] != EXPECTED[sec]:
+        err(f"{sec} has {cnt[sec]} questions (expected {EXPECTED[sec]})")
 
 # 2. completeness
 REQ = ["topic", "subtopic", "difficulty", "time", "text", "solution", "fast",
