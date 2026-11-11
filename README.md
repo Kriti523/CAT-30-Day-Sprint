@@ -222,8 +222,15 @@ Topic priority scores are derived from the available evidence and are intended a
 | ⚡ Vite | Development & build |
 | 🎨 Tailwind CSS | Styling |
 | 🐍 Python | Question/data generation & validation |
-| 💾 localStorage | Local persistence |
+| 🔐 Supabase Auth | Login / sign-up (email + password, Google) |
+| 💾 localStorage | Local persistence (kept separately per account) |
 | 🧪 Playwright | Browser testing |
+
+### Accounts
+
+The app opens on a login / sign-up screen backed by Supabase Auth (project `cat-30-day-sprint`). The project URL and publishable key are in `src/lib/supabase.ts`; to use another project, copy `.env.example` to `.env` and change the values. Progress still lives in the browser's localStorage, stored under each account's id. The first account to log in on a browser adopts any progress saved before accounts existed.
+
+"Continue with Google" needs the Google provider switched on in Supabase (Authentication → Sign In / Providers → Google) with an OAuth client from Google Cloud Console whose authorised redirect URI is `https://cebpgcjvjgwhslwlotlh.supabase.co/auth/v1/callback`. Until then the button says Google sign-in isn't set up.
 
 ### Architecture
 

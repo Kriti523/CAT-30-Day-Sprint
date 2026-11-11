@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { NavCtx, type Nav, type Page, type Session } from './lib/nav';
 import { useStore } from './lib/store';
+import { useAuth } from './lib/auth';
 import type { Section } from './types';
 import Dashboard from './pages/Dashboard';
 import PlanPage from './pages/Plan';
@@ -42,6 +43,7 @@ function initialPage(): Page {
 
 export default function App() {
   const { persistent } = useStore();
+  const { user, signOut } = useAuth();
   const [page, setPage] = useState<Page>(initialPage);
   const [bankSection, setBankSection] = useState<Section>('QA');
   const [bankQuery, setBankQuery] = useState('');
@@ -96,6 +98,11 @@ export default function App() {
               ))}
             </div>
           ))}
+          <div className="mt-2 border-t px-2 pt-4" style={{ borderColor: 'var(--line)' }}>
+            <div className="label mb-1">Signed in</div>
+            <div className="truncate text-sm" title={user.email}>{user.email}</div>
+            <button onClick={signOut} className="btn btn-sm mt-2">Log out</button>
+          </div>
         </nav>
 
         <div className="min-w-0">
@@ -103,7 +110,7 @@ export default function App() {
           <header className="app-head lg:hidden sticky z-20 border-b" style={{ top: 'env(safe-area-inset-top, 0px)', background: 'var(--surface)', borderColor: 'var(--line)' }}>
             <div className="flex items-center justify-between px-4 pt-3">
               <span className="display text-lg font-bold">CAT Sprint</span>
-              <span className="text-xs text-muted">30 days · 300 Qs</span>
+              <button onClick={signOut} className="btn btn-ghost btn-sm" title={`Signed in as ${user.email}`}>Log out</button>
             </div>
             <div className="scroll-x flex gap-1 px-3 py-2" role="tablist" aria-label="Pages">
               {NAV.map((n) => (

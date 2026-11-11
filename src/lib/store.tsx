@@ -2,7 +2,9 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { AppState, Confidence, ErrorReason, MockLog, TestResult } from '../types';
 import { QMAP, isCorrect } from './data';
 
-const KEY = 'cat30-sprint:v1';
+// Progress from before accounts existed; the first account to log in on this browser adopts it.
+const LEGACY_KEY = 'cat30-sprint:v1';
+const userKey = (userId: string) => `${LEGACY_KEY}:${userId}`;
 
 function nextMonday(d = new Date()): string {
   const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -22,9 +24,9 @@ export function emptyState(): AppState {
 }
 
 /** localStorage can be missing or throw (private mode, blocked storage); the app works without it. */
-function load(): { state: AppState; persistent: boolean } {
+function load(key: string): { state: AppState; persistent: boolean } {
   try {
-    const raw = window.localStorage.getItem(KEY);
+    const raw = window.localStorage.getItem(key) ?? window.localStorage.getItem(LEGACY_KEY);
     if (!raw) return { state: emptyState(), persistent: true };
     const parsed = JSON.parse(raw);
     return { state: { ...emptyState(), ...parsed, v: 1 }, persistent: true };
@@ -32,8 +34,12 @@ function load(): { state: AppState; persistent: boolean } {
     return { state: emptyState(), persistent: false };
   }
 }
-function save(s: AppState): boolean {
-  try { window.localStorage.setItem(KEY, JSON.stringify(s)); return true; } catch { return false; }
+function save(key: string, s: AppState): boolean {
+  try {
+    window.localStorage.setItem(key, JSON.stringify(s));
+    window.localStorage.removeItem(LEGACY_KEY); // adopted by this account now
+    return true;
+  } catch { return false; }
 }
 
 interface Store {
@@ -59,12 +65,13 @@ interface Store {
 
 const Ctx = createContext<Store | null>(null);
 
-export function StoreProvider({ children }: { children: ReactNode }) {
-  const initial = useRef(load());
+export function StoreProvider({ userId, children }: { userId: string; children: ReactNode }) {
+  const key = userKey(userId);
+  const initial = useRef(load(key));
   const [state, setState] = useState<AppState>(initial.current.state);
   const [persistent, setPersistent] = useState(initial.current.persistent);
 
-  useEffect(() => { setPersistent(save(state)); }, [state]);
+  useEffect(() => { setPersistent(save(key, state)); }, [key, state]);
 
   const update = useCallback((fn: (s: AppState) => AppState) => setState((s) => fn(s)), []);
 
