@@ -23,10 +23,10 @@ export default function DataPage() {
 
   return (
     <div>
-      <PageHead eyebrow="Stored only in this browser" title="Your data">
-        Progress, notes, bookmarks, confidence ratings, the error log, plan ticks and mock logs are saved in this browser’s local storage. Nothing is sent anywhere, so a different browser or device starts empty — use a backup to move it.
+      <PageHead eyebrow="Saved to your account and this device" title="Your data">
+        Progress, notes, bookmarks, confidence ratings, the error log, plan ticks and mock logs are saved to your account and kept in this browser too, so they appear on every device where you sign in and still work offline. A backup file is an extra copy you control.
       </PageHead>
-      {!persistent && <div className="mb-4"><Note tone="warn">Local storage is unavailable in this browser session, so changes will not survive a reload.</Note></div>}
+      {!persistent && <div className="mb-4"><Note tone="warn">Local storage is unavailable in this browser session. Changes are still saved to your account while you're online.</Note></div>}
       <div className="grid gap-4 md:grid-cols-2">
         <Panel title="Back up">
           <p className="text-sm text-muted">Copies your full progress as text ({Math.round(json.length / 1024)} KB).</p>
@@ -45,7 +45,7 @@ export default function DataPage() {
       </div>
       {msg && <p className="mt-3 text-sm" role="status">{msg}</p>}
       <Panel title="Start over" className="mt-4">
-        <p className="text-sm text-muted">Erases all progress in this browser. Export a backup first if you might want it back.</p>
+        <p className="text-sm text-muted">Erases all progress from your account, on every device. Export a backup first if you might want it back.</p>
         {confirmReset ? (
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <span className="text-sm">Erase everything?</span>

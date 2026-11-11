@@ -3,7 +3,7 @@ import { QUESTIONS, SETS, QMAP, isCorrect, expandRefs, normalise } from '../src/
 import { PLAN } from '../src/data/plan';
 import { RANKED, classify } from '../src/data/priorities';
 import { buildSection, scoreSection, marksFor } from '../src/lib/tests';
-import { emptyState } from '../src/lib/store';
+import { applyAttempt, emptyState, hasProgress, mergeStates, normalize } from '../src/lib/state';
 import { SECTIONS } from '../src/types';
 
 let pass = 0; const fails: string[] = [];
@@ -57,6 +57,34 @@ ok(sc.score === 3 && sc.correct === 1 && sc.wrong === 1 && sc.attempted === 2, '
 ok(RANKED.every((t) => t.score >= 0 && t.score <= 100), 'scores in range');
 ok(classify(75) === 'Must Master' && classify(74) === 'Should Master' && classify(45) === 'Selective Practice' && classify(44) === 'Low Priority', 'classes');
 ok(new Set(RANKED.map((t) => t.cls)).size === 4, 'all four classes used');
+// 6. recording answers and merging two devices' progress (cloud sync)
+const e0 = emptyState();
+ok(!hasProgress(e0), 'empty state has no progress');
+const r1 = applyAttempt(e0, mcq.id, String(mcq.answer), 42.4);
+ok(r1.ok && r1.state.attempts[mcq.id].n === 1 && r1.state.attempts[mcq.id].t === 42 && hasProgress(r1.state), 'applyAttempt records a correct answer');
+ok(e0.attempts[mcq.id] === undefined, 'applyAttempt does not mutate its input');
+const wrongGiven = String((Number(mcq.answer) + 1) % 4);
+const r2 = applyAttempt(r1.state, mcq.id, wrongGiven, 10);
+ok(!r2.ok && r2.state.attempts[mcq.id].n === 2 && r2.state.errors[mcq.id]?.resolved === false && r2.state.attempts[mcq.id].everCorrect, 'wrong answer goes to the error log, keeps everCorrect');
+ok(applyAttempt(r2.state, mcq.id, String(mcq.answer), 5).state.errors[mcq.id].resolved, 'a later right answer resolves the error');
+const att = (n: number, at: number, correct = true) => ({ n, correct, everCorrect: correct, last: '', t: 1, at, history: [] });
+const local = normalize({ attempts: { A: att(2, 50), B: att(1, 10) }, bookmarks: { A: true }, notes: { A: 'local note' }, startDate: '2026-11-16',
+  errors: { B: { addedAt: 1, resolved: false } }, tests: [{ id: 't2', startedAt: 20 } as never], mocks: [{ id: 'm1', name: 'local' } as never] });
+const remote = normalize({ attempts: { A: att(1, 90), B: att(3, 5, false), C: att(1, 7) }, bookmarks: { C: true }, notes: { A: 'remote note', C: 'c' }, startDate: '2026-11-09',
+  errors: { B: { addedAt: 2, resolved: true, reason: 'Guessed' } }, tests: [{ id: 't1', startedAt: 10 } as never], mocks: [{ id: 'm1', name: 'remote' } as never, { id: 'm2', name: 'r2' } as never] });
+const m = mergeStates(local, remote);
+ok(m.attempts.A.n === 2 && m.attempts.B.n === 3 && m.attempts.C.n === 1, 'merge keeps the attempt answered more often, from either side');
+ok(m.errors.B.reason === 'Guessed', 'merge takes the error-log entry from the side whose attempt won');
+ok(m.bookmarks.A && m.bookmarks.C && m.notes.A === 'local note' && m.notes.C === 'c', 'merge unions bookmarks and notes, this device wins clashes');
+ok(m.tests.map((t) => t.id).join() === 't1,t2' && m.mocks.length === 2 && m.mocks.find((x) => x.id === 'm1')!.name === 'local', 'merge combines tests and mocks by id');
+ok(m.startDate === '2026-11-16' && m.v === 1, "merge keeps this device's settings");
+const tie = mergeStates(normalize({ attempts: { A: att(1, 5) } }), normalize({ attempts: { A: att(1, 9) } }));
+ok(tie.attempts.A.at === 9, 'equal attempt counts: the more recent one wins');
+ok(JSON.stringify(mergeStates(remote, remote)) === JSON.stringify(normalize({ ...remote, tests: remote.tests })), 'merging a state with itself changes nothing');
+// the landing page's warm-up questions exist and are one per section
+const TRIAL = ['Q001', 'V097', 'D063'];
+ok(TRIAL.every((id) => QMAP[id]) && new Set(TRIAL.map((id) => QMAP[id].section)).size === 3, 'warm-up has one question per section');
+ok(!!QMAP.D063.setId && !!SETS.find((s) => s.id === QMAP.D063.setId), 'warm-up DILR question has its data set');
 
 console.log(`logic tests: ${pass} passed, ${fails.length} failed`);
 if (fails.length) { console.log(fails.slice(0, 30).join('\n')); process.exit(1); }

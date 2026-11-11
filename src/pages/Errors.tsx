@@ -26,10 +26,10 @@ export default function Errors() {
 
       <div className="grid gap-4 md:grid-cols-[1fr_2fr]">
         <Panel title="Why you miss questions">
-          <ul className="grid gap-2 text-sm">
+          <ul className="grid gap-3.5 text-sm">
             {reasonCounts.map(({ r, n }) => (
               <li key={r}>
-                <div className="flex justify-between"><span>{r}</span><span className="num">{n}</span></div>
+                <div className="mb-1.5 flex justify-between gap-3"><span>{r}</span><span className="num">{n}</span></div>
                 <Meter value={n} max={maxN} color="var(--seq-3)" label={r} />
               </li>
             ))}

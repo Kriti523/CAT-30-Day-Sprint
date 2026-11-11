@@ -1,7 +1,16 @@
 {
- "passed": 42,
+ "passed": 51,
  "failed": [],
  "all": [
+  "landing: dot countdown renders",
+  "landing links to the privacy policy",
+  "warm-up: correct answer marked, solution shown",
+  "warm-up answer saved for the future account",
+  "sign-up blocks a weak password",
+  "\"Home\" returns to the landing page",
+  "theme switch: dark",
+  "theme choice survives a reload",
+  "first sign-in adopts the warm-up answers",
   "dashboard renders",
   "search \"remainder\" returns 4 QA results",
   "QA Hard filter = 20 (expected 20)",

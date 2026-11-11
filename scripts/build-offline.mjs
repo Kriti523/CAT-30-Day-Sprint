@@ -7,10 +7,13 @@ import { execFileSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+// fileURLToPath, not URL.pathname: on Windows the latter gives "/D:/…" and paths resolve to "D:\D:\…".
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const req = createRequire(import.meta.url);
 mkdirSync(path.join(root, 'dist'), { recursive: true });
+const version = () => { try { return execFileSync('git', ['rev-parse', '--short', 'HEAD'], { cwd: root }).toString().trim() + '-offline'; } catch { return 'offline'; } };
 
 // 1. Tailwind CSS
 const twCli = path.join(path.dirname(req.resolve('tailwindcss/package.json')), 'lib/cli.js');
@@ -21,7 +24,7 @@ const css = readFileSync(cssOut, 'utf8');
 const common = {
   entryPoints: [path.join(root, 'src/main.tsx')], bundle: true, minify: true, format: 'iife', target: 'es2019',
   jsx: 'automatic', loader: { '.css': 'empty', '.json': 'json' }, write: false, legalComments: 'none',
-  define: { 'process.env.NODE_ENV': '"production"' },
+  define: { 'process.env.NODE_ENV': '"production"', __APP_VERSION__: JSON.stringify(version()) },
 };
 
 // 2a. Fully bundled (React inside)
@@ -36,9 +39,11 @@ const globals = {
 };
 const cdn = await build({ ...common, plugins: [globals] });
 
-const fonts = '<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=JetBrains+Mono:wght@400;600&family=Source+Sans+3:wght@400;600;700&display=swap">';
+const fonts = '<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=JetBrains+Mono:wght@400;600&family=Source+Sans+3:wght@400;600;700&display=swap">';
 const esc = (s) => s.replace(/<\/script/gi, '<\\/script');
-const page = (js, head = '') => `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>CAT 30-Day Sprint</title>${fonts}<style>${css}</style>${head}</head><body><div id="root"></div><script>${esc(js)}</script></body></html>`;
+// Same pre-paint theme script as index.html, so a saved dark/light choice doesn't flash.
+const themeScript = "<script>try{var t=localStorage.getItem('cat30-sprint:theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>";
+const page = (js, head = '') => `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>CAT 30-Day Sprint</title>${themeScript}${fonts}<style>${css}</style>${head}</head><body><div id="root"></div><script>${esc(js)}</script></body></html>`;
 
 writeFileSync(path.join(root, 'dist/index.html'), page(bundled.outputFiles[0].text));
 const cdnScripts = '<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>';

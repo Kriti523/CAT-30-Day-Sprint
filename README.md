@@ -223,14 +223,34 @@ Topic priority scores are derived from the available evidence and are intended a
 | 🎨 Tailwind CSS | Styling |
 | 🐍 Python | Question/data generation & validation |
 | 🔐 Supabase Auth | Login / sign-up (email + password, Google) |
-| 💾 localStorage | Local persistence (kept separately per account) |
+| ☁️ Supabase Postgres | Progress synced across devices (`progress`), crash reports (`client_errors`) |
+| 💾 localStorage | Offline copy of progress (per account), theme choice |
+| 📈 Vercel Web Analytics | Cookieless page-view counts |
 | 🧪 Playwright | Browser testing |
+| 🤖 GitHub Actions | Typecheck, build, logic + UI tests on every PR |
 
 ### Accounts
 
-The app opens on a login / sign-up screen backed by Supabase Auth (project `cat-30-day-sprint`). The project URL and publishable key are in `src/lib/supabase.ts`; to use another project, copy `.env.example` to `.env` and change the values. Progress still lives in the browser's localStorage, stored under each account's id. The first account to log in on a browser adopts any progress saved before accounts existed.
+Visitors land on a public home page (`src/pages/Landing.tsx`) with a 3-question warm-up they can try without an account; `#login` / `#signup` open the login screen, backed by Supabase Auth (project `cat-30-day-sprint`). The project URL and publishable key are in `src/lib/supabase.ts`; to use another project, copy `.env.example` to `.env` and change the values.
+
+**Progress sync.** Progress is kept in localStorage (per account, so the app works offline) and synced to the `progress` table, one row per user, readable and writable only by that user. Each write carries the revision it was based on; when two devices changed things since they last synced, `mergeStates` in `src/lib/state.ts` combines them (most-attempted answer wins, tests and mocks are combined, this device wins other clashes). The first account to log in on a browser adopts any progress saved there before sign-in, including the warm-up answers. The schema is in `supabase/migrations/`.
+
+**Crash reports** from signed-in users go to the `client_errors` table (Supabase dashboard → Table Editor); nothing can read them through the API. **Page views** are counted by Vercel Web Analytics once it is enabled in the Vercel project (Analytics tab); only the path is sent, never the URL hash.
 
 "Continue with Google" needs the Google provider switched on in Supabase (Authentication → Sign In / Providers → Google) with an OAuth client from Google Cloud Console whose authorised redirect URI is `https://cebpgcjvjgwhslwlotlh.supabase.co/auth/v1/callback`. Until then the button says Google sign-in isn't set up.
+
+### Development
+
+```bash
+npm install
+npm run dev            # http://localhost:5173 (fixed port: it matches the Supabase redirect URLs)
+npm run build          # typecheck + production build
+npm test               # logic tests (questions, plan, scoring, sync merge)
+npm run build:offline  # single-file dist/index.html, used by the UI test
+python scripts/ui_test.py   # Playwright UI test (pip install playwright && python -m playwright install chromium)
+```
+
+The UI test runs offline: it blocks all Supabase requests and signs in with a synthetic session, so it needs no account. The same checks run on every pull request (`.github/workflows/ci.yml`).
 
 ### Architecture
 

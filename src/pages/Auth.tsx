@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { isAuthRetryableFetchError, type AuthError } from '@supabase/supabase-js';
 import { providerEnabled, supabase } from '../lib/supabase';
+import { ThemeToggle } from '../components/ThemeToggle';
 
 const OFFLINE = 'Could not reach the sign-in server. Check your connection and try again.';
 
@@ -12,6 +13,14 @@ function message(error: AuthError) {
 }
 
 type Mode = 'login' | 'signup';
+
+/** New-account password rules (letters may be upper or lower case). Log in doesn't check them, so older passwords still work. */
+const PW_RULES = [
+  { label: 'At least 8 characters', need: '8+ characters', test: (p: string) => p.length >= 8 },
+  { label: 'A letter (a–z or A–Z)', need: 'a letter', test: (p: string) => /\p{L}/u.test(p) },
+  { label: 'A number (0–9)', need: 'a number', test: (p: string) => /\p{N}/u.test(p) },
+  { label: 'A special character, like ! @ # $ %', need: 'a special character', test: (p: string) => /[^\p{L}\p{N}\s]/u.test(p) },
+];
 
 const VISITED_KEY = 'cat30-sprint:visited';
 
@@ -26,10 +35,16 @@ const POINTS = [
   ['3', 'sections tracked: VARC, DILR and QA'],
 ];
 
-export default function AuthScreen() {
+/** Keeps #login / #signup in the address bar in step with the tab, without adding history entries. */
+function showMode(m: Mode) {
+  try { history.replaceState(null, '', `${window.location.pathname}#${m}`); } catch { /* sandboxed frames may refuse */ }
+}
+
+export default function AuthScreen({ initialMode = 'login' }: { initialMode?: Mode }) {
   const [returning] = useState(visitedBefore);
   useEffect(() => { try { window.localStorage.setItem(VISITED_KEY, '1'); } catch { /* blocked storage: every visit looks like the first */ } }, []);
-  const [mode, setMode] = useState<Mode>('login');
+  const [mode, setModeState] = useState<Mode>(initialMode);
+  const setMode = (m: Mode) => { setModeState(m); showMode(m); };
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
@@ -50,7 +65,7 @@ export default function AuthScreen() {
     const msg = params.get('error_description');
     if (!msg) return;
     setError(`Google sign-in failed: ${msg.replace(/\+/g, ' ')}`);
-    try { history.replaceState(null, '', window.location.pathname); } catch { /* sandboxed frames may refuse */ }
+    showMode('login');
   }, []);
 
   async function google() {
@@ -70,7 +85,8 @@ export default function AuthScreen() {
   async function submit(e: FormEvent) {
     e.preventDefault();
     setError(''); setInfo('');
-    if (mode === 'signup' && password.length < 6) { setError('Use at least 6 characters for your password.'); return; }
+    const missing = PW_RULES.filter((r) => !r.test(password)).map((r) => r.need);
+    if (mode === 'signup' && missing.length) { setError(`Your password still needs ${missing.join(', ')}.`); return; }
     setBusy(true);
     try {
       if (mode === 'login') {
@@ -94,11 +110,15 @@ export default function AuthScreen() {
   }
 
   return (
-    <div className="grid min-h-screen place-items-center px-4 py-10">
+    <div className="relative grid min-h-screen place-items-center px-4 pb-10 pt-16">
+      <div className="absolute inset-x-0 top-0 mx-auto flex max-w-[880px] items-center justify-between px-4 py-3">
+        <a href="#" className="text-sm font-semibold" style={{ color: 'var(--accent)' }}>← Home</a>
+        <ThemeToggle />
+      </div>
       <div className="grid w-full max-w-[880px] items-center gap-10 lg:grid-cols-[1fr_400px]">
         <div>
           <div className="display text-3xl font-bold leading-none sm:text-4xl">CAT Sprint</div>
-          <p className="mt-3 max-w-[40ch] text-muted">A focused 30-day CAT plan. Sign in to pick up your practice, error log and progress where you left them.</p>
+          <p className="mt-3 max-w-[40ch] text-muted">A focused CAT plan. Sign in to pick up your practice, error log and progress where you left them, on any device.</p>
           <ul className="mt-6 hidden space-y-3 sm:block">
             {POINTS.map(([n, t]) => (
               <li key={n} className="flex items-baseline gap-3">
@@ -122,7 +142,7 @@ export default function AuthScreen() {
 
           <h1 className="text-xl font-bold">{mode === 'signup' ? 'Create your account' : returning ? 'Welcome back' : 'Welcome'}</h1>
           <p className="mt-1 text-sm text-muted">
-            {mode === 'signup' ? 'It takes a few seconds. Your progress is saved per account on this device.'
+            {mode === 'signup' ? 'It takes a few seconds. Your progress is saved to your account and follows you to every device.'
               : returning ? 'Log in to continue your sprint.' : 'Log in, or create an account to start your sprint.'}
           </p>
 
@@ -152,8 +172,21 @@ export default function AuthScreen() {
               </div>
               <input id="auth-password" type={showPw ? 'text' : 'password'} required
                 autoComplete={mode === 'login' ? 'current-password' : 'new-password'} className="field"
+                aria-describedby={mode === 'signup' ? 'pw-rules' : undefined}
                 value={password} onChange={(e) => setPassword(e.target.value)} />
-              {mode === 'signup' && <p className="mt-1 text-xs text-muted">At least 6 characters.</p>}
+              {mode === 'signup' && (
+                <ul id="pw-rules" className="mt-2 grid gap-0.5 text-xs" aria-label="Password must have">
+                  {PW_RULES.map((r) => {
+                    const ok = r.test(password);
+                    return (
+                      <li key={r.need} className="flex items-center gap-1.5" style={{ color: ok ? 'var(--good)' : 'var(--muted)' }}>
+                        <span aria-hidden className="inline-block w-3 text-center font-bold">{ok ? '✓' : '•'}</span>
+                        {r.label}<span className="sr-only">{ok ? ' (done)' : ' (missing)'}</span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
             </div>
 
             {error && <div role="alert" className="rounded-lg px-3 py-2 text-sm" style={{ background: 'var(--bad-soft)', color: 'var(--bad)' }}>{error}</div>}
