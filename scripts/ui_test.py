@@ -1,21 +1,74 @@
 """End-to-end UI test of dist/index.html in headless Chromium (Playwright)."""
 import os, sys, json, re
+from pathlib import Path
 from playwright.sync_api import sync_playwright
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-URL = 'file://' + os.path.join(ROOT, 'dist', 'index.html')
+URL = Path(ROOT, 'dist', 'index.html').as_uri()  # a valid file:// URL on Windows too
 SHOTS = os.path.join(ROOT, 'test-shots')
+os.makedirs(SHOTS, exist_ok=True)
 results, errors = [], []
 def check(cond, msg):
     results.append((bool(cond), msg)); print(('PASS ' if cond else 'FAIL ') + msg)
 
+# The app sits behind sign-in. Tests use a synthetic session (never sent anywhere: every Supabase request is
+# blocked), so they run offline and need no real account. Cloud sync simply reports "Not synced".
+UID = '00000000-0000-4000-8000-000000000001'
+SESSION_JS = """(() => { try { localStorage.setItem('sb-cebpgcjvjgwhslwlotlh-auth-token', JSON.stringify({
+  access_token: 'ui-test', token_type: 'bearer', expires_in: 31536000, expires_at: Math.floor(Date.now() / 1000) + 31536000,
+  refresh_token: 'ui-test', user: { id: '%s', aud: 'authenticated', role: 'authenticated', email: 'ui.test@example.com',
+  app_metadata: {}, user_metadata: {}, created_at: '2026-01-01T00:00:00Z' } })); } catch (e) {} })();""" % UID
+PROGRESS_KEY = f'cat30-sprint:v1:{UID}'
+OFFLINE_ONLY = re.compile(r'https://([^/]*\.supabase\.co|fonts\.[^/]+)/.*')
+
+def context(browser, signed_in=True, **kw):
+    ctx = browser.new_context(**kw)
+    ctx.route(OFFLINE_ONLY, lambda r: r.abort())
+    if signed_in: ctx.add_init_script(SESSION_JS)
+    return ctx
+
 with sync_playwright() as p:
     b = p.chromium.launch()
-    ctx = b.new_context(viewport={'width': 1366, 'height': 900})
-    page = ctx.new_page()
-    page.on('console', lambda m: errors.append(m.text) if m.type == 'error' and 'fonts.g' not in m.text and 'ERR_' not in m.text else None)
-    page.on('pageerror', lambda e: errors.append(str(e)))
-    page.route(re.compile(r'https://fonts\..*'), lambda r: r.abort())
+    q = json.load(open(os.path.join(ROOT, 'src/data/questions.json'), encoding='utf-8'))
+    Q = {x['id']: x for x in q}
+    watch = lambda pg: (pg.on('console', lambda m: errors.append(m.text) if m.type == 'error' and 'fonts.g' not in m.text and 'ERR_' not in m.text else None),
+                        pg.on('pageerror', lambda e: errors.append(str(e))))
+
+    # --- Landing page (signed out): countdown, warm-up, sign-up rules, theme, then adoption on first sign-in
+    lc = context(b, signed_in=False, viewport={'width': 1366, 'height': 900})
+    lp = lc.new_page(); watch(lp)
+    lp.goto(URL); lp.wait_for_selector('.landing h1')
+    check(lp.locator('.landing canvas[role="img"]').count() == 1, 'landing: dot countdown renders')
+    check(lp.locator('a[href="privacy.html"]').count() >= 1, 'landing links to the privacy policy')
+    lp.screenshot(path=f'{SHOTS}/00-landing.png')
+    lp.get_by_role('button', name='Start the warm-up').click()
+    lp.wait_for_selector('text=Question 1 of 3')
+    lp.locator('.trial-card [role="radio"]').nth(Q['Q001']['answer']).click()
+    lp.get_by_role('button', name='Check answer').click()
+    check(lp.locator('.trial-card').get_by_text('✓ Correct').count() == 1, 'warm-up: correct answer marked, solution shown')
+    guest = lp.evaluate("JSON.parse(localStorage.getItem('cat30-sprint:v1'))")
+    check(guest['attempts']['Q001']['correct'] is True, 'warm-up answer saved for the future account')
+    lp.get_by_role('link', name='Start free').first.click()
+    lp.wait_for_selector('text=Create your account')
+    lp.fill('#auth-email', 'x@example.com'); lp.fill('#auth-password', 'abc')
+    lp.get_by_role('button', name='Create account').click()
+    check(lp.get_by_text('Your password still needs').count() == 1, 'sign-up blocks a weak password')
+    lp.get_by_role('link', name='← Home').click(); lp.wait_for_selector('.landing h1')
+    check(lp.locator('.landing').count() == 1, '"Home" returns to the landing page')
+    lp.get_by_role('radio', name='Dark').first.click()
+    check(lp.evaluate("document.documentElement.getAttribute('data-theme')") == 'dark', 'theme switch: dark')
+    lp.reload(); lp.wait_for_selector('.landing h1')
+    check(lp.evaluate("document.documentElement.getAttribute('data-theme')") == 'dark', 'theme choice survives a reload')
+    lp.get_by_role('radio', name='Match device').first.click()
+    lp.evaluate(SESSION_JS); lp.reload(); lp.wait_for_selector('text=Your CAT sprint')
+    adopted = lp.evaluate(f"JSON.parse(localStorage.getItem('{PROGRESS_KEY}'))")
+    check(adopted['attempts'].get('Q001', {}).get('correct') is True and lp.evaluate("localStorage.getItem('cat30-sprint:v1')") is None,
+          'first sign-in adopts the warm-up answers')
+    lc.close()
+
+    # --- Signed-in app
+    ctx = context(b, viewport={'width': 1366, 'height': 900})
+    page = ctx.new_page(); watch(page)
     page.goto(URL); page.wait_for_selector('text=Your CAT sprint')
     check(page.locator('text=0/300').count() == 0 or True, 'dashboard renders')
     page.screenshot(path=f'{SHOTS}/01-dashboard.png', full_page=False)
@@ -47,15 +100,13 @@ with sync_playwright() as p:
     page.fill('#bank-search', 'Q001')
     page.locator('ul.panel > li button').first.click()
     page.wait_for_selector('text=Check answer')
-    q = json.load(open(os.path.join(ROOT, 'src/data/questions.json')))
-    Q = {x['id']: x for x in q}
     ans = Q['Q001']['answer']
     page.wait_for_timeout(2200)
     t1 = page.get_by_label('Time on this question').inner_text()
     check(t1 != '0:00', f'question timer running ({t1})')
     page.get_by_role('button', name='Show hint').click()
     check(page.locator('text=Hint ·').count() == 1, 'hint shows')
-    page.get_by_role('radio').nth(ans).click()
+    page.get_by_role('radiogroup', name='Options').get_by_role('radio').nth(ans).click()
     page.get_by_role('button', name='Check answer').click()
     check(page.locator('text=✓ Correct').count() == 1, 'correct MCQ marked correct')
     check(page.locator('text=Step-by-step solution').count() == 1, 'solution shown')
@@ -80,7 +131,7 @@ with sync_playwright() as p:
 
     # --- Reload: persistence
     page.reload(); page.wait_for_timeout(500)
-    stored = page.evaluate("JSON.parse(localStorage.getItem('cat30-sprint:v1'))")
+    stored = page.evaluate(f"JSON.parse(localStorage.getItem('{PROGRESS_KEY}'))")
     check(stored['bookmarks'].get('Q001') is True, 'bookmark persisted')
     check(stored['notes'].get('Q001') == 'Multiply the factors.', 'note persisted')
     check(stored['confidence'].get('Q001') == 1, 'confidence persisted')
@@ -151,8 +202,8 @@ with sync_playwright() as p:
     check(page.locator('text=Frequency 2023–25').count() >= 1, 'priority ratings expand')
 
     # --- Dark mode + mobile
-    m = b.new_context(viewport={'width': 390, 'height': 844}, color_scheme='dark')
-    mp = m.new_page(); mp.route(re.compile(r'https://fonts\..*'), lambda r: r.abort())
+    m = context(b, viewport={'width': 390, 'height': 844}, color_scheme='dark')
+    mp = m.new_page()
     mp.on('pageerror', lambda e: errors.append(str(e)))
     mp.goto(URL); mp.wait_for_selector('text=Your CAT sprint')
     sw = mp.evaluate('document.documentElement.scrollWidth'); cw = mp.evaluate('document.documentElement.clientWidth')
@@ -169,14 +220,13 @@ with sync_playwright() as p:
     mp.get_by_role('tab', name='Paper trends').click()
     mp.screenshot(path=f'{SHOTS}/11-mobile-trends.png', full_page=True)
     # light explicit
-    lp = b.new_context(viewport={'width': 1280, 'height': 900}, color_scheme='dark').new_page()
-    lp.route(re.compile(r'https://fonts\..*'), lambda r: r.abort())
-    lp.goto(URL); lp.evaluate("document.documentElement.setAttribute('data-theme','light')"); lp.wait_for_timeout(100)
+    lp = context(b, viewport={'width': 1280, 'height': 900}, color_scheme='dark').new_page()
+    lp.goto(URL); lp.wait_for_selector('text=Your CAT sprint'); lp.evaluate("document.documentElement.setAttribute('data-theme','light')"); lp.wait_for_timeout(100)
     check(lp.evaluate('getComputedStyle(document.body).backgroundColor') == 'rgb(243, 245, 242)', 'data-theme=light overrides OS dark')
     b.close()
 
 check(not errors, f'no console/page errors ({errors[:3]})')
 failed = [m for ok, m in results if not ok]
 print(f'\nUI tests: {len(results) - len(failed)} passed, {len(failed)} failed')
-json.dump({'passed': len(results) - len(failed), 'failed': failed, 'all': [m for _, m in results]}, open(os.path.join(ROOT, 'content', 'ui_test_result.json'), 'w'), indent=1)
+json.dump({'passed': len(results) - len(failed), 'failed': failed, 'all': [m for _, m in results]}, open(os.path.join(ROOT, 'content', 'ui_test_result.json'), 'w', encoding='utf-8'), indent=1)
 sys.exit(1 if failed else 0)

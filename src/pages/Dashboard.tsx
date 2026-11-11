@@ -33,7 +33,8 @@ export default function Dashboard() {
           <button className="btn btn-primary" onClick={() => go('plan')}>Open today’s plan</button>
           <button className="btn" onClick={() => startSession(queue, 'Reattempt queue')} disabled={!queue.length}>Reattempt queue · {queue.length}</button>
         </>}>
-        {toExam > 0 ? <>CAT {NEXT_EXAM.year} is on <strong>{NEXT_EXAM.label}</strong> — <span className="num">{toExam}</span> days away. </> : null}
+        {toExam > 0 ? <>CAT {NEXT_EXAM.year} is on <strong>{NEXT_EXAM.label}</strong> — <span className="num">{toExam}</span> {toExam === 1 ? 'day' : 'days'} away. </> : null}
+        {toExam === 0 ? <><strong>CAT {NEXT_EXAM.year} is today. All the best!</strong> Run through your <button type="button" className="font-semibold underline" style={{ color: 'var(--accent)' }} onClick={() => go('strategy')}>exam-day checklist</button> before you leave. </> : null}
         Built for 2 hours on weekdays, 4 on Saturdays and 5 on Sundays, with a 45-minute fallback for busy days.
       </PageHead>
 
@@ -108,10 +109,10 @@ export default function Dashboard() {
           ))}
         </div>}>
         <p className="mb-3 text-sm text-muted">Bar = share of the topic attempted · number = accuracy. Tap a topic to open it in the bank.</p>
-        <ul className="grid gap-x-8 gap-y-2 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="grid gap-x-10 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
           {bySubtopic(state, mSec).map((t) => (
             <li key={t.subtopic}>
-              <div className="flex items-baseline justify-between gap-2 text-sm">
+              <div className="mb-1.5 flex items-baseline justify-between gap-3 text-sm">
                 <button className="text-left hover:underline" onClick={() => go('bank', { bankSection: mSec, bankQuery: t.subtopic })}>{t.subtopic}</button>
                 <span className="num text-muted">{t.attempted}/{t.total} · {pct(t.accuracy)}</span>
               </div>

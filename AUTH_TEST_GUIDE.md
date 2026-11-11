@@ -18,6 +18,7 @@ Mark each test ✅ / ❌. If something fails, note the test number and the exact
 | Google OAuth client + provider | ✅ Configured |
 | Google sign-in (local) | ✅ Tested |
 | Email sign-up / login | ⬜ Not tested yet (Phase 1, sections B–C) |
+| Home page, theme switch, cloud sync | ⬜ New: Phase 1, sections I–K |
 | New code on the live site | ⬜ Not pushed (old version is live) |
 | Google app published | ⬜ Needs the live privacy page first (Phase 3) |
 
@@ -59,7 +60,7 @@ Open http://localhost:5173. Keep it running while you test, because email confir
 
 | # | Steps | Expected |
 |---|---|---|
-| A1 | Open the site in a private window | Heading **"Welcome"**, line *"Log in, or create an account to start your sprint."* |
+| A1 | Open the site in a private window → **Log in** (top right) | Heading **"Welcome"**, line *"Log in, or create an account to start your sprint."* |
 | A2 | Reload | Heading **"Welcome back"**, line *"Log in to continue your sprint."* |
 | A3 | Click the **Sign up** tab | Heading **"Create your account"** |
 
@@ -67,8 +68,12 @@ Open http://localhost:5173. Keep it running while you test, because email confir
 
 | # | Steps | Expected |
 |---|---|---|
-| B1 | Sign up tab → any email, password `abc` → **Create account** | Red *"Use at least 6 characters for your password."* Nothing is sent |
-| B2 | Sign up with a **new** email (`+a`) and a 6+ character password | Green *"Check you+a@… for a confirmation link, then log in here."* Screen switches to the Log in tab with your email already filled in (password empty) |
+| B1 | Sign up tab → any email, password `abc` → **Create account** | Red *"Your password still needs 8+ characters, a number, a special character."* Nothing is sent |
+| B1a | Watch the checklist under Password while typing `abcdefgh`, then `abcdefg1`, then `abcdef1!` | Rules turn green with ✓ one by one: *8 characters*, *letter*, then *number*, then *special character* |
+| B1b | Try `12345678!` (no letter) and `Abcdefg!` (no number) | Each is blocked with a message naming what's missing |
+| B1c | Upper or lower case doesn't matter: `abcdef1!` and `ABCDEF1!` | Both pass all four rules |
+| B1d | Log in tab | No checklist; any password is accepted, so older accounts still work |
+| B2 | Sign up with a **new** email (`+a`) and a password like `Sprint@2026` | Green *"Check you+a@… for a confirmation link, then log in here."* Screen switches to the Log in tab with your email already filled in (password empty) |
 | B3 | Before clicking the email link, log in with that account | Red *"Email not confirmed"* |
 | B4 | Open the email from Supabase ("Confirm your signup") → click the link | A tab opens at `localhost:5173` already logged in, with your email in the sidebar |
 | B5 | Sign up again with the **same** confirmed email | Red *"An account with this email already exists. Log in instead."* Screen switches to Log in |
@@ -93,16 +98,16 @@ Open http://localhost:5173. Keep it running while you test, because email confir
 |---|---|---|
 | D1 | Logged in → reload | Brief *"Loading…"*, then the app, without the login screen |
 | D2 | Close the tab, open http://localhost:5173 again | Still logged in |
-| D3 | Desktop: sidebar → **Log out** | Login screen with "Welcome back"; the `sb-…-auth-token` key is gone |
+| D3 | Desktop: sidebar → **Log out** | The home page; the `sb-…-auth-token` key is gone |
 | D4 | Phone width (DevTools → device toolbar, e.g. iPhone 12) → header → **Log out** | Same as D3 |
-| D5 | After logging out, press the browser's **Back** button | Still the login screen |
+| D5 | After logging out, press the browser's **Back** button | Still signed out (home or login screen), no app pages |
 
 ### E. Separate progress per account
 
 | # | Steps | Expected |
 |---|---|---|
 | E1 | Log in as **A** (`+a`) → Question bank → answer one question and bookmark it | Dashboard shows 1 attempted |
-| E2 | Log out → sign up / log in as **B** (`+b`) | B's dashboard shows **0/300**, no bookmark |
+| E2 | Log out → sign up / log in as **B** (`+b`) | B's dashboard shows **0/300** (or only B's own warm-up answers), no bookmark |
 | E3 | Log out → log in as **A** | A's attempt and bookmark are still there |
 | E4 | Log out. In DevTools → Console run `localStorage.setItem('cat30-sprint:v1', JSON.stringify({ bookmarks: { Q001: true } }))`, then log in with an account that has **never** logged in on this browser (e.g. a Google account or `+c`) | That account has Q001 bookmarked; the `cat30-sprint:v1` key is gone |
 
@@ -136,7 +141,40 @@ Open http://localhost:5173. Keep it running while you test, because email confir
 | H3 | Click **← Back to CAT Sprint** | Returns to the login screen |
 | H4 | Phone width and dark/light mode | Readable, no sideways scrolling |
 
-**✅ Phase 1 done when B, C, E and H pass.** Then push.
+### I. Home page & warm-up (signed out)
+
+| # | Steps | Expected |
+|---|---|---|
+| I1 | Open the site in a private window | Home page: headline, the days-to-CAT number drawn in blue/orange/green dots, the scrolling topic band |
+| I2 | Move the mouse (or a finger on a phone) through the dots | They scatter away and settle back. With the OS's "reduce motion" on, the number is still and nothing animates |
+| I3 | **Try 3 questions, no sign-up** → answer all three | Each shows a timer against its target, then the full solution; the last screen shows your score and times |
+| I4 | **Save this and keep going** → sign up and confirm a **new** account on this same browser | The new account's dashboard already shows those 3 attempts |
+| I5 | Nav links **Try it / How it works / What's inside** | Scroll smoothly to each section; the address bar doesn't change |
+| I6 | **Log in**, **Start free**, then **← Home** and the browser's Back button | Open the login screen on the right tab, and return to the home page |
+| I7 | Footer → **Privacy policy** | Opens the policy |
+| I8 | Phone width | Nothing sticks out sideways; the dot number fits the screen |
+
+### J. Light / dark switch
+
+| # | Steps | Expected |
+|---|---|---|
+| J1 | Click ☀ / 🖥 / ☾ (home page nav, login screen, app sidebar or mobile header) | Light, match-device and dark apply immediately everywhere, including the dot colours |
+| J2 | Pick Dark, reload, then open the privacy page | Still dark, with no white flash while loading |
+| J3 | Pick "match device", then change the OS theme | The site follows the OS |
+
+### K. Progress sync across devices (needs a real account)
+
+| # | Steps | Expected |
+|---|---|---|
+| K1 | Log in on a laptop, answer two questions, wait 2 seconds | Sidebar shows **● Synced** |
+| K2 | Log in to the same account on your phone | The two attempts are there |
+| K3 | Bookmark a question on the phone, then switch back to the laptop tab | Within a moment of the tab coming back into view, the bookmark appears |
+| K4 | Laptop: DevTools → Network → **Offline**, answer a question | Badge shows **Offline**; the answer is kept |
+| K5 | Back online | Badge returns to **Synced**; the phone shows the answer after a refresh |
+| K6 | Supabase → Table Editor → `progress` | One row per account, with `rev` going up as you study |
+| K7 | *Your data → Erase all progress* on one device, then refresh the other | Both are back to 0/300 |
+
+**✅ Phase 1 done when B, C, E, H, I, J and K pass.** Then push.
 
 ---
 
@@ -158,7 +196,7 @@ Use a **private window** so nothing from localhost carries over. Progress and lo
 
 | # | Steps | Expected |
 |---|---|---|
-| L1 | Open https://cat-30-day-sprint.vercel.app | Login screen (**"Welcome"**), not the old dashboard. If you still see the old app, hard-reload (Ctrl+Shift+R) |
+| L1 | Open https://cat-30-day-sprint.vercel.app | The new home page with the dot countdown, not the old dashboard. If you still see the old app, hard-reload (Ctrl+Shift+R) |
 | L2 | Open https://cat-30-day-sprint.vercel.app/privacy.html | Privacy policy (not 404) |
 | L3 | **Sign up with email** using a fresh address (`+live`) | Green "check your email" message |
 | L4 | Click the confirmation link | Opens **cat-30-day-sprint.vercel.app** (not localhost) already logged in |
@@ -200,7 +238,7 @@ Use a **private window** so nothing from localhost carries over. Progress and lo
 
 ## Known limits
 
-- Progress is saved in the browser, not in Supabase, so the same account on another device starts at 0/300.
+- If two devices change the same note or setting while both are offline, the device that syncs last wins for that item; attempts and tests are combined.
 - There is no "Forgot password" link yet.
 - The offline single-file build (`npm run build:offline`) needs internet to log in.
 - `scripts/ui_test.py` stops at the login screen until it's taught to log in.

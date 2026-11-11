@@ -1,50 +1,16 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { AppState, Confidence, ErrorReason, MockLog, TestResult } from '../types';
 import { QMAP, isCorrect } from './data';
+import { applyAttempt, emptyState, hasProgress, loadLocal, normalize, saveLocal, userKey } from './state';
+import { useCloudSync, type SyncStatus } from './sync';
 
-// Progress from before accounts existed; the first account to log in on this browser adopts it.
-const LEGACY_KEY = 'cat30-sprint:v1';
-const userKey = (userId: string) => `${LEGACY_KEY}:${userId}`;
-
-function nextMonday(d = new Date()): string {
-  const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  const add = (8 - x.getDay()) % 7 || 7; // always the coming Monday
-  x.setDate(x.getDate() + (x.getDay() === 1 ? 0 : add));
-  return toISO(x);
-}
-export function toISO(d: Date) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
-export function emptyState(): AppState {
-  return {
-    v: 1, attempts: {}, bookmarks: {}, notes: {}, confidence: {}, errors: {},
-    planTasks: {}, busyDays: {}, startDate: nextMonday(), examDate: '2026-11-29', tests: [], mocks: [],
-  };
-}
-
-/** localStorage can be missing or throw (private mode, blocked storage); the app works without it. */
-function load(key: string): { state: AppState; persistent: boolean } {
-  try {
-    const raw = window.localStorage.getItem(key) ?? window.localStorage.getItem(LEGACY_KEY);
-    if (!raw) return { state: emptyState(), persistent: true };
-    const parsed = JSON.parse(raw);
-    return { state: { ...emptyState(), ...parsed, v: 1 }, persistent: true };
-  } catch {
-    return { state: emptyState(), persistent: false };
-  }
-}
-function save(key: string, s: AppState): boolean {
-  try {
-    window.localStorage.setItem(key, JSON.stringify(s));
-    window.localStorage.removeItem(LEGACY_KEY); // adopted by this account now
-    return true;
-  } catch { return false; }
-}
+export { emptyState, toISO } from './state';
 
 interface Store {
   state: AppState;
   persistent: boolean;
+  /** Where the cloud copy of this account's progress stands. */
+  sync: SyncStatus;
   record: (qid: string, given: string, seconds: number) => boolean;
   toggleBookmark: (qid: string) => void;
   setNote: (qid: string, text: string) => void;
@@ -67,34 +33,26 @@ const Ctx = createContext<Store | null>(null);
 
 export function StoreProvider({ userId, children }: { userId: string; children: ReactNode }) {
   const key = userKey(userId);
-  const initial = useRef(load(key));
+  const initial = useRef<ReturnType<typeof loadLocal>>();
+  initial.current ??= loadLocal(key);
   const [state, setState] = useState<AppState>(initial.current.state);
   const [persistent, setPersistent] = useState(initial.current.persistent);
 
-  useEffect(() => { setPersistent(save(key, state)); }, [key, state]);
+  useEffect(() => { setPersistent(saveLocal(key, state)); }, [key, state]);
+
+  // Progress adopted from before sign-in (or older saves with no sync record yet) must go up to the cloud.
+  const { adopted, state: first } = initial.current;
+  const sync = useCloudSync(userId, state, setState, adopted || hasProgress(first));
 
   const update = useCallback((fn: (s: AppState) => AppState) => setState((s) => fn(s)), []);
 
   const record = useCallback((qid: string, given: string, seconds: number) => {
-    const q = QMAP[qid];
-    const ok = isCorrect(q, given);
-    update((s) => {
-      const prev = s.attempts[qid];
-      const rec = {
-        n: (prev?.n ?? 0) + 1, correct: ok, everCorrect: ok || !!prev?.everCorrect, last: given,
-        t: Math.round(seconds), at: Date.now(),
-        history: [...(prev?.history ?? []), { c: ok, t: Math.round(seconds), at: Date.now() }].slice(-10),
-      };
-      const errors = { ...s.errors };
-      if (!ok) errors[qid] = { ...(errors[qid] ?? { addedAt: Date.now() }), resolved: false };
-      else if (errors[qid]) errors[qid] = { ...errors[qid], resolved: true };
-      return { ...s, attempts: { ...s.attempts, [qid]: rec }, errors };
-    });
-    return ok;
+    update((s) => applyAttempt(s, qid, given, seconds).state);
+    return isCorrect(QMAP[qid], given);
   }, [update]);
 
   const store = useMemo<Store>(() => ({
-    state, persistent, record,
+    state, persistent, sync, record,
     toggleBookmark: (qid) => update((s) => {
       const b = { ...s.bookmarks };
       if (b[qid]) delete b[qid]; else b[qid] = true;
@@ -112,9 +70,9 @@ export function StoreProvider({ userId, children }: { userId: string; children: 
     saveTest: (t) => update((s) => ({ ...s, tests: [...s.tests, t] })),
     saveMock: (m) => update((s) => ({ ...s, mocks: [...s.mocks.filter((x) => x.id !== m.id), m] })),
     deleteMock: (id) => update((s) => ({ ...s, mocks: s.mocks.filter((x) => x.id !== id) })),
-    replaceAll: (n) => setState({ ...emptyState(), ...n, v: 1 }),
+    replaceAll: (n) => setState(normalize(n)),
     reset: () => setState(emptyState()),
-  }), [state, persistent, record, update]);
+  }), [state, persistent, sync, record, update]);
 
   return <Ctx.Provider value={store}>{children}</Ctx.Provider>;
 }
