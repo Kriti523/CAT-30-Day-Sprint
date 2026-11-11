@@ -219,6 +219,22 @@ with sync_playwright() as p:
         check(sw <= cw + 1, f'mobile {tab}: no horizontal scroll ({sw})')
     mp.get_by_role('tab', name='Paper trends').click()
     mp.screenshot(path=f'{SHOTS}/11-mobile-trends.png', full_page=True)
+    # DILR data sets on narrow phones: the table must scroll inside its card, not stretch the page
+    phone = lambda signed_in, w: context(b, signed_in=signed_in, **{**p.devices['iPhone 12'], 'viewport': {'width': w, 'height': 800}}).new_page()
+    wp = phone(False, 375); watch(wp)
+    wp.goto(URL); wp.get_by_role('button', name='Start the warm-up').click(); wp.wait_for_selector('text=Question 1 of 3')
+    for _ in range(2):
+        wp.locator('.trial-card [role="radio"]').first.click()
+        wp.get_by_role('button', name='Check answer').click()
+        wp.get_by_role('button', name=re.compile('Next question')).click()
+    wp.wait_for_selector('text=Question 3 of 3')
+    card_right = wp.evaluate("document.querySelector('.trial-card').getBoundingClientRect().right")
+    check(wp.evaluate('innerWidth') == 375 and card_right <= 375, f'phone: warm-up DILR question fits the screen (card right {card_right:.0f} <= 375)')
+    np_ = phone(True, 320); watch(np_)
+    np_.goto(URL); np_.wait_for_selector('text=Your CAT sprint')
+    np_.get_by_role('tab', name='Question bank').click(); np_.get_by_role('tab', name=re.compile('DILR')).click()
+    np_.fill('#bank-search', 'D031'); np_.locator('ul.panel > li button').first.click(); np_.wait_for_timeout(300)
+    check(np_.evaluate('innerWidth') == 320, f"320px phone: DILR set with table fits (layout width {np_.evaluate('innerWidth')})")
     # light explicit
     lp = context(b, viewport={'width': 1280, 'height': 900}, color_scheme='dark').new_page()
     lp.goto(URL); lp.wait_for_selector('text=Your CAT sprint'); lp.evaluate("document.documentElement.setAttribute('data-theme','light')"); lp.wait_for_timeout(100)

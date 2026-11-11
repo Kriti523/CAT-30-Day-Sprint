@@ -171,8 +171,8 @@ function Runner({ run, setRun, onFinish }: { run: Running; setRun: (r: Running) 
         </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_220px]">
-        <div className={set ? 'grid gap-4 xl:grid-cols-2' : ''}>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_220px]">
+        <div className={set ? 'grid grid-cols-1 gap-4 xl:grid-cols-2' : ''}>
           {set && <div className="panel p-4 sm:p-5 xl:max-h-[75vh] xl:overflow-y-auto"><SetContext set={set} /></div>}
           <div className="panel p-4 sm:p-5">
             <div className="mb-2 flex flex-wrap items-center gap-2 text-sm">

@@ -44,9 +44,11 @@ jobs:
           python-version: '3.12'
       - run: npm ci
       - name: Install Playwright + Chromium
+        # --with-deps apt-installs fonts and libraries; if Ubuntu's mirrors are unreachable (it happens), fall back to
+        # the browser alone: GitHub's Ubuntu image ships Google Chrome, so Chromium's shared libraries are already there.
         run: |
           python -m pip install playwright
-          python -m playwright install --with-deps chromium
+          python -m playwright install --with-deps chromium || python -m playwright install chromium
       - name: Single-file build tested by the UI test
         run: npm run build:offline
       - name: UI test (offline, synthetic session; no Supabase calls)

@@ -1,5 +1,5 @@
 {
- "passed": 51,
+ "passed": 53,
  "failed": [],
  "all": [
   "landing: dot countdown renders",
@@ -51,6 +51,8 @@
   "mobile Paper trends: no horizontal scroll (390)",
   "mobile Topic priorities: no horizontal scroll (390)",
   "mobile Sectional tests: no horizontal scroll (390)",
+  "phone: warm-up DILR question fits the screen (card right 359 <= 375)",
+  "320px phone: DILR set with table fits (layout width 320)",
   "data-theme=light overrides OS dark",
   "no console/page errors ([])"
  ]

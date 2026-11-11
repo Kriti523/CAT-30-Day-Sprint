@@ -86,7 +86,7 @@ export default function Trial() {
         </span>
       </div>
 
-      <div className="grid gap-4 p-4 sm:p-6">
+      <div className="grid grid-cols-1 gap-4 p-4 sm:p-6">
         {set && <div className="rounded-lg border p-3 text-[0.95rem]" style={{ borderColor: 'var(--line)' }}><SetContext set={set} /></div>}
         <RichText text={q.text} />
         <AnswerInput q={q} value={value} onChange={setValue} locked={checked} reveal={checked} />
