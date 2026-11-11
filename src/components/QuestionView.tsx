@@ -58,7 +58,7 @@ export function SetContext({ set, evidence = [] }: { set: QSet; evidence?: strin
     <div>
       <div className="mb-2 flex flex-wrap items-center gap-2">
         <SectionTag s={set.section} />
-        <span className="chip">{set.subtopic}</span>
+        <span className="chip max-w-full whitespace-normal">{set.subtopic}</span>
         <span className="chip mono">{set.id}</span>
       </div>
       <h3 className="mb-3 text-xl font-bold">{set.title}</h3>
@@ -225,7 +225,7 @@ export function QuestionView({ q, onNext, onPrev, position }: { q: Question; onN
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <SectionTag s={q.section} />
         <span className="chip mono">{q.id}</span>
-        <span className="chip">{q.topic} · {q.subtopic}</span>
+        <span className="chip max-w-full whitespace-normal">{q.topic} · {q.subtopic}</span>
         <DiffTag d={q.difficulty} />
         <span className="chip">{q.type}</span>
         <span className="chip num" title="Estimated solving time">~{fmtTime(q.time)}</span>
@@ -258,7 +258,7 @@ export function QuestionView({ q, onNext, onPrev, position }: { q: Question; onN
 
   if (!set) return <div className="panel p-4 sm:p-6">{body}</div>;
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
       <div className="panel p-4 sm:p-6 lg:max-h-[80vh] lg:overflow-y-auto">
         <SetContext set={set} evidence={submitted !== null ? q.evidence : []} />
       </div>

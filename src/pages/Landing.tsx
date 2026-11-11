@@ -105,7 +105,7 @@ export default function Landing() {
 
       {/* Hero */}
       <section id="top" className="lanes relative">
-        <div className="mx-auto grid max-w-[1180px] items-center gap-8 px-4 pb-14 pt-10 sm:px-6 lg:grid-cols-[1.25fr_1fr] lg:gap-6 lg:pb-24 lg:pt-20">
+        <div className="mx-auto grid max-w-[1180px] grid-cols-1 items-center gap-8 px-4 pb-14 pt-10 sm:px-6 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] lg:gap-6 lg:pb-24 lg:pt-20">
           <div className="relative z-10">
             <div className="chip mb-6" style={{ background: 'var(--surface)' }}>
               <span className="live-dot" aria-hidden />
@@ -171,7 +171,7 @@ export default function Landing() {
 
       {/* Try it */}
       <section id="try" className="scroll-mt-16">
-        <div className="mx-auto grid max-w-[1180px] gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[0.8fr_1.2fr] lg:py-24">
+        <div className="mx-auto grid max-w-[1180px] grid-cols-1 gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:py-24">
           <div data-reveal>
             <Eyebrow>Try before you sign up</Eyebrow>
             <h2 className="display text-4xl font-bold leading-[1.05] sm:text-5xl">Three questions.<br />One from each section.</h2>
@@ -249,7 +249,7 @@ export default function Landing() {
             <Eyebrow>What's inside</Eyebrow>
             <h2 className="display max-w-3xl text-4xl font-bold leading-[1.05] sm:text-5xl">Everything a working candidate needs. Nothing they don't.</h2>
           </div>
-          <div className="mt-10 grid gap-4 md:grid-cols-6">
+          <div className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-6">
             {/* Question bank */}
             <div className="tile panel p-6 md:col-span-4" data-reveal>
               <div className="flex flex-wrap items-end justify-between gap-4">
@@ -359,7 +359,7 @@ export default function Landing() {
 
       {/* Manifesto */}
       <section className="manifesto">
-        <div className="mx-auto grid max-w-[1180px] gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[1.3fr_1fr] lg:py-24">
+        <div className="mx-auto grid max-w-[1180px] grid-cols-1 gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] lg:py-24">
           <div data-reveal>
             <div className="quote-mark" aria-hidden>“</div>
             <p className="display -mt-6 text-3xl font-bold leading-tight sm:text-5xl">You don't need more study material. You need a system.</p>
@@ -378,7 +378,7 @@ export default function Landing() {
 
       {/* Final CTA: race bib */}
       <section>
-        <div className="mx-auto grid max-w-[1180px] items-center gap-12 px-4 py-20 sm:px-6 lg:grid-cols-2 lg:py-28">
+        <div className="mx-auto grid max-w-[1180px] grid-cols-1 items-center gap-12 px-4 py-20 sm:px-6 lg:grid-cols-2 lg:py-28">
           <div data-reveal>
             <Eyebrow>Your number</Eyebrow>
             <h2 className="display text-4xl font-bold leading-[1.05] sm:text-6xl">Pin it on.<br />{examDay ? 'Run your race.' : 'Start the sprint.'}</h2>
