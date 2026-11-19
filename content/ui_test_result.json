@@ -1,5 +1,5 @@
 {
- "passed": 53,
+ "passed": 61,
  "failed": [],
  "all": [
   "landing: dot countdown renders",
@@ -12,6 +12,10 @@
   "theme choice survives a reload",
   "first sign-in adopts the warm-up answers",
   "dashboard renders",
+  "desktop menu starts collapsed",
+  "Menu button docks the menu beside the content",
+  "open menu is remembered after a reload",
+  "Menu button collapses it again (content back to full width)",
   "search \"remainder\" returns 4 QA results",
   "QA Hard filter = 20 (expected 20)",
   "QA TITA filter = 34 (expected 34)",
@@ -47,12 +51,16 @@
   "priority ratings expand",
   "mobile: no horizontal page scroll (390 <= 390)",
   "dark theme applied (rgb(16, 19, 18))",
+  "phone: menu opens as a drawer",
+  "phone: Esc closes the menu",
+  "phone: choosing a page opens it and closes the menu",
   "mobile 30-day plan: no horizontal scroll (390)",
   "mobile Paper trends: no horizontal scroll (390)",
   "mobile Topic priorities: no horizontal scroll (390)",
   "mobile Sectional tests: no horizontal scroll (390)",
   "phone: warm-up DILR question fits the screen (card right 359 <= 375)",
   "320px phone: DILR set with table fits (layout width 320)",
+  "320px phone: Paper trends fits (layout width 320)",
   "data-theme=light overrides OS dark",
   "no console/page errors ([])"
  ]

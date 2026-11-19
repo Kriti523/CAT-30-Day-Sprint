@@ -43,7 +43,7 @@ export default function PlanPage() {
         {startDow !== 1 && <Note tone="warn">Day 1 is designed as a Monday so that the 4- and 5-hour blocks fall on Saturday and Sunday. Your start date is not a Monday, so move the weekend-labelled days to your own days off.</Note>}
       </div>
 
-      <div className="mb-6 grid gap-3 md:grid-cols-4">
+      <div className="mb-6 grid grid-cols-1 gap-3 md:grid-cols-4">
         {PHASES.map((p, i) => (
           <div key={p.week} className="panel p-3">
             <div className="flex items-center gap-2"><span style={{ width: 12, height: 12, borderRadius: 3, background: WEEK_TINT[i] }} /><span className="label">Week {p.week} · Days {p.days}</span></div>

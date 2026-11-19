@@ -22,7 +22,7 @@ export default function Trends() {
         IIMs publish the pattern and response sheets, not topic counts. Every topic count here is a <strong>reconstruction</strong> by coaching institutes; where sources disagree, the conflict is shown rather than averaged. Next exam: CAT {NEXT_EXAM.year} by {NEXT_EXAM.iim}, {NEXT_EXAM.label}.
       </PageHead>
 
-      <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {INSIGHTS.map((i) => (
           <div key={i.title} className="panel p-4"><h3 className="font-bold">{i.title}</h3><p className="mt-1 text-sm text-muted">{i.body}</p></div>
         ))}
@@ -68,7 +68,7 @@ export default function Trends() {
           {QA_SUB.topics.map((t, i) => {
             const vals = [QA_SUB.y2023[i], QA_SUB.y2024[i], QA_SUB.y2025[i]];
             return (
-              <li key={t} className="grid items-center gap-x-3 sm:grid-cols-[14rem_1fr]">
+              <li key={t} className="grid grid-cols-1 items-center gap-x-3 sm:grid-cols-[14rem_1fr]">
                 <span className="text-sm">{t} <span className="num text-muted">· {vals.reduce((a, b) => a + b, 0)}</span></span>
                 <span className="grid gap-[2px]">
                   {vals.map((v, j) => (
@@ -85,7 +85,7 @@ export default function Trends() {
         <p className="mt-3 text-sm text-muted">{QA_SUB.note}</p>
       </Panel>
 
-      <div className="mb-6 grid gap-4 lg:grid-cols-2">
+      <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Panel title="VARC structure">
           <ul className="grid gap-3 text-sm">{VARC_STRUCTURE.map((v) => (
             <li key={v.year}><div className="flex flex-wrap items-center gap-2"><strong className="num">{v.year}</strong><Reliab r={v.status} /></div>
@@ -100,7 +100,7 @@ export default function Trends() {
         </Panel>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Panel title="Scaled score at each percentile" aside={<Cite keys={[PERCENTILE_SCORES.source]} />}>
           <div className="scroll-x"><table className="data">
             <thead><tr><th>Year</th><th className="n">95 %ile</th><th className="n">99 %ile</th><th className="n">99.5 %ile</th><th>Sectional 99 %ile</th></tr></thead>

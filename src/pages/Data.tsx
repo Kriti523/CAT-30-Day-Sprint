@@ -27,7 +27,7 @@ export default function DataPage() {
         Progress, notes, bookmarks, confidence ratings, the error log, plan ticks and mock logs are saved to your account and kept in this browser too, so they appear on every device where you sign in and still work offline. A backup file is an extra copy you control.
       </PageHead>
       {!persistent && <div className="mb-4"><Note tone="warn">Local storage is unavailable in this browser session. Changes are still saved to your account while you're online.</Note></div>}
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <Panel title="Back up">
           <p className="text-sm text-muted">Copies your full progress as text ({Math.round(json.length / 1024)} KB).</p>
           <button className="btn btn-primary mt-3" onClick={copy}>Copy backup</button>

@@ -63,7 +63,7 @@ export default function Mocks() {
 
       <form className="panel p-4 sm:p-6" onSubmit={(e) => { e.preventDefault(); saveMock(form); setSaved(`Saved “${form.name || form.date}”.`); setForm(blank()); }}>
         <h2 className="mb-4 text-xl font-bold">Mock analysis template</h2>
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <label className="grid gap-1"><span className="label">Mock name</span><input id="mock-name" className="field" placeholder="e.g. Mock 2" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></label>
           <label className="grid gap-1"><span className="label">Date</span><input id="mock-date" type="date" className="field" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></label>
           <label className="grid gap-1"><span className="label">Source</span><input id="mock-source" className="field" placeholder="e.g. IIM official mock / coaching series / in-app" value={form.source} onChange={(e) => setForm({ ...form, source: e.target.value })} /></label>
@@ -93,7 +93,7 @@ export default function Mocks() {
         </div>
         <p className="mt-1 text-xs text-muted">Estimated marks = 3 × correct − wrong answers, assuming every wrong answer was an MCQ (so it is a lower bound when some wrong answers were TITA).</p>
 
-        <div className="mt-4 grid gap-3 md:grid-cols-2">
+        <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
           {PROMPTS.map((p) => (
             <label key={p.key} className="grid gap-1">
               <span className="label">{p.label}</span>

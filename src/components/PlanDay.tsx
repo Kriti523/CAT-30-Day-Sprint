@@ -66,7 +66,7 @@ export function PlanDayCard({ d, compact = false }: { d: PlanDay; compact?: bool
         </ol>
       )}
 
-      <dl className="mt-3 grid gap-x-6 gap-y-1 text-sm sm:grid-cols-3">
+      <dl className="mt-3 grid grid-cols-1 gap-x-6 gap-y-1 text-sm sm:grid-cols-3">
         <div><dt className="label">Accuracy target</dt><dd>{d.accuracy}</dd></div>
         <div><dt className="label">Time target</dt><dd>{d.time}</dd></div>
         <div><dt className="label">Revision & error log</dt><dd>{d.revision}</dd></div>

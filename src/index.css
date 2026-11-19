@@ -83,6 +83,31 @@ table.data td.n, table.data th.n { text-align: right; font-variant-numeric: tabu
 .bar-track { background: var(--sunk); border-radius: 4px; height: .55rem; overflow: hidden; }
 .bar-fill { height: 100%; border-radius: 4px; }
 
+/* ---------- App menu (src/App.tsx): docked panel on wide screens, slide-over drawer on phones ----------
+   Both stay in the page and switch with transitions, so opening and closing animate. visibility switches off
+   only after the slide-out, which also takes the hidden menu out of keyboard focus. */
+/* Standard ease-in-out: starts gently, so the move reads as motion rather than a jump. */
+:root { --menu-w: 272px; --menu-ease: cubic-bezier(.4, 0, .2, 1); }
+.shell { display: grid; grid-template-columns: 0px minmax(0, 1fr); transition: grid-template-columns .38s var(--menu-ease); }
+.shell.menu-open { grid-template-columns: var(--menu-w) minmax(0, 1fr); }
+.dock { position: sticky; top: 57px; height: calc(100vh - 57px); align-self: start; overflow: hidden; }
+.dock-panel { width: var(--menu-w); opacity: 0; transform: translateX(-28px); visibility: hidden;
+  transition: opacity .22s ease, transform .38s var(--menu-ease), visibility 0s linear .38s; }
+.menu-open .dock-panel { opacity: 1; transform: none; visibility: visible;
+  transition: opacity .3s ease .1s, transform .38s var(--menu-ease), visibility 0s; }
+
+.drawer { box-shadow: 0 10px 40px rgb(0 0 0 / .25); transform: translateX(-105%); visibility: hidden;
+  transition: transform .3s var(--menu-ease), visibility 0s linear .3s; }
+.drawer.is-open { transform: none; visibility: visible; transition: transform .36s var(--menu-ease), visibility 0s; }
+.drawer-backdrop { background: rgb(0 0 0 / .45); opacity: 0; visibility: hidden; transition: opacity .26s ease, visibility 0s linear .26s; }
+.drawer-backdrop.is-open { opacity: 1; visibility: visible; transition: opacity .26s ease, visibility 0s; }
+
+/* ☰ ⇄ ✕ */
+.burger line { transform-box: fill-box; transform-origin: center; transition: transform .32s var(--menu-ease), opacity .2s ease; }
+.burger.is-open .l1 { transform: translateY(5px) rotate(45deg); }
+.burger.is-open .l2 { opacity: 0; transform: scaleX(.2); }
+.burger.is-open .l3 { transform: translateY(-5px) rotate(-45deg); }
+
 /* ---------- Landing page (src/pages/Landing.tsx) ---------- */
 .landing { overflow-x: clip; }
 .landing-nav { background: var(--ground); }

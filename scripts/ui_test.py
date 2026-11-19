@@ -21,6 +21,13 @@ SESSION_JS = """(() => { try { localStorage.setItem('sb-cebpgcjvjgwhslwlotlh-aut
 PROGRESS_KEY = f'cat30-sprint:v1:{UID}'
 OFFLINE_ONLY = re.compile(r'https://([^/]*\.supabase\.co|fonts\.[^/]+)/.*')
 
+def nav(pg, name):
+    """Opens a page from the app menu, opening the menu first when it is collapsed (desktop) or a closed drawer (phone)."""
+    item = pg.locator('#app-menu').get_by_role('button', name=name, exact=True)
+    if not item.count() or not item.is_visible():
+        pg.get_by_role('button', name='Open menu').click()
+    pg.locator('#app-menu').get_by_role('button', name=name, exact=True).click()
+
 def context(browser, signed_in=True, **kw):
     ctx = browser.new_context(**kw)
     ctx.route(OFFLINE_ONLY, lambda r: r.abort())
@@ -72,9 +79,22 @@ with sync_playwright() as p:
     page.goto(URL); page.wait_for_selector('text=Your CAT sprint')
     check(page.locator('text=0/300').count() == 0 or True, 'dashboard renders')
     page.screenshot(path=f'{SHOTS}/01-dashboard.png', full_page=False)
+    # --- Menu (desktop): starts collapsed, docks beside the content, remembered across reloads, collapses again
+    check(not page.locator('#app-menu').is_visible(), 'desktop menu starts collapsed')
+    full = page.evaluate("document.querySelector('main').getBoundingClientRect().width")
+    page.get_by_role('button', name='Open menu').click(); page.wait_for_timeout(500)  # let the open animation finish
+    check(page.locator('#app-menu').is_visible() and page.evaluate("document.querySelector('main').getBoundingClientRect().width") < full,
+          'Menu button docks the menu beside the content')
+    page.reload(); page.wait_for_selector('text=Your CAT sprint')
+    check(page.locator('#app-menu').is_visible(), 'open menu is remembered after a reload')
+    page.screenshot(path=f'{SHOTS}/01c-dashboard-menu-docked.png', full_page=False)
+    page.get_by_role('button', name='Close menu').click(); page.wait_for_timeout(500)
+    check(not page.locator('#app-menu').is_visible() and page.evaluate("document.querySelector('main').getBoundingClientRect().width") == full,
+          'Menu button collapses it again (content back to full width)')
+    page.screenshot(path=f'{SHOTS}/01b-dashboard-menu-collapsed.png', full_page=False)
 
     # --- Bank: search + filters
-    page.get_by_role('button', name='Question bank').first.click()
+    nav(page, 'Question bank')
     page.wait_for_selector('text=Question bank')
     page.get_by_role('tab', name=re.compile('QA')).click()
     page.fill('#bank-search', 'remainder')
@@ -120,7 +140,7 @@ with sync_playwright() as p:
 
     # --- TITA wrong answer on Q009? find a TITA QA question
     tita = next(x for x in q if x['section'] == 'QA' and x['type'] == 'TITA')
-    page.get_by_role('button', name='Question bank').first.click()
+    nav(page, 'Question bank')
     page.get_by_role('tab', name=re.compile('QA')).click()
     page.fill('#bank-search', tita['id'])
     page.locator('ul.panel > li button').first.click()
@@ -139,19 +159,19 @@ with sync_playwright() as p:
     check(stored['errors'][tita['id']]['reason'] == 'Calculation slip' and not stored['errors'][tita['id']]['resolved'], 'error log entry persisted')
 
     # --- Error log & reattempt queue
-    page.get_by_role('button', name='Error log').first.click()
+    nav(page, 'Error log')
     page.wait_for_selector('text=Error log & reattempt queue')
     check(page.get_by_role('button', name=re.compile(r'Start reattempt queue \(2\)')).count() == 1, 'reattempt queue has wrong + low-confidence (2)')
     page.screenshot(path=f'{SHOTS}/04-errors.png')
 
     # --- DILR set rendering + timed random
-    page.get_by_role('button', name='Question bank').first.click()
+    nav(page, 'Question bank')
     page.get_by_role('tab', name=re.compile('DILR')).click()
     page.fill('#bank-search', 'D061')
     page.locator('ul.panel > li button').first.click()
     check(page.locator('svg[aria-label*="Revenue"]').count() >= 1, 'DILR bar chart renders')
     page.screenshot(path=f'{SHOTS}/05-dilr-chart.png')
-    page.get_by_role('button', name='Question bank').first.click()
+    nav(page, 'Question bank')
     page.get_by_role('tab', name=re.compile('QA')).click()
     page.fill('#bank-search', '')
     page.get_by_role('button', name='Start random (timed)').click()
@@ -159,7 +179,7 @@ with sync_playwright() as p:
     check(page.locator('text=/left$/').count() >= 1 or page.locator('text=/\\d+:\\d\\d left/').count() >= 1, 'timed random session shows countdown')
 
     # --- Plan page
-    page.get_by_role('button', name='30-day plan').first.click()
+    nav(page, '30-day plan')
     page.wait_for_selector('text=30-day study plan')
     check(page.locator('button:has-text("Day 30")').count() >= 1, 'calendar shows 30 days')
     page.locator('input[id^="task-"]').first.check()
@@ -168,7 +188,7 @@ with sync_playwright() as p:
     page.screenshot(path=f'{SHOTS}/06-plan.png')
 
     # --- Sectional test: QA, answer 2, submit
-    page.get_by_role('button', name='Sectional tests').first.click()
+    nav(page, 'Sectional tests')
     page.locator('button:has-text("Start 40-min test")').nth(2).click()
     page.wait_for_selector('text=Question palette')
     check(page.locator('aside button').count() == 22, 'QA sectional has 22 questions')
@@ -185,20 +205,20 @@ with sync_playwright() as p:
     # --- Other pages render
     for name, marker in [('Paper trends', 'Previous-paper trends'), ('Topic priorities', 'Topic priorities'), ('Formula sheets', 'Formula & revision sheets'),
                          ('Mock analysis', 'Mock analysis template'), ('Exam strategy', 'Working targets'), ('Sources', 'Sources & limitations'), ('Your data', 'Back up')]:
-        page.get_by_role('button', name=name).first.click()
+        nav(page, name)
         page.wait_for_timeout(200)
         check(page.locator(f'text={marker}').count() >= 1, f'{name} page renders')
         page.screenshot(path=f"{SHOTS}/08-{name.replace(' ', '_')}.png", full_page=True)
 
     # --- Mock analysis save
-    page.get_by_role('button', name='Mock analysis').first.click()
+    nav(page, 'Mock analysis')
     page.fill('#mock-name', 'Mock 1'); page.fill('#mock-VARC-attempted', '18'); page.fill('#mock-VARC-correct', '14')
     page.get_by_role('button', name='Save analysis').click()
     check(page.locator('text=Score trend').count() == 1, 'mock saved and trend shown')
 
     # --- Priorities expand + practice
-    page.get_by_role('button', name='Topic priorities').first.click()
-    page.locator('button[aria-expanded]').first.click()
+    nav(page, 'Topic priorities')
+    page.locator('main button[aria-expanded]').first.click()
     check(page.locator('text=Frequency 2023–25').count() >= 1, 'priority ratings expand')
 
     # --- Dark mode + mobile
@@ -211,16 +231,30 @@ with sync_playwright() as p:
     bg = mp.evaluate('getComputedStyle(document.body).backgroundColor')
     check(bg in ('rgb(16, 19, 18)',), f'dark theme applied ({bg})')
     mp.screenshot(path=f'{SHOTS}/09-mobile-dark-dashboard.png', full_page=True)
-    mp.get_by_role('tab', name='Question bank').click()
+    # --- Menu (phone): slides over the page, Esc closes it, picking a page closes it
+    mp.get_by_role('button', name='Open menu').click()
+    check(mp.locator('#app-menu').is_visible() and mp.locator('.drawer-backdrop.is-open').is_visible(), 'phone: menu opens as a drawer')
+    mp.wait_for_timeout(400); mp.screenshot(path=f'{SHOTS}/09b-mobile-menu-open.png')
+    mp.keyboard.press('Escape')
+    mp.wait_for_timeout(400)
+    check(not mp.locator('#app-menu').is_visible(), 'phone: Esc closes the menu')
+    nav(mp, 'Question bank'); mp.wait_for_selector('#bank-search')
+    mp.wait_for_timeout(400)
+    check(not mp.locator('#app-menu').is_visible(), 'phone: choosing a page opens it and closes the menu')
     mp.screenshot(path=f'{SHOTS}/10-mobile-bank.png')
     for tab in ['30-day plan', 'Paper trends', 'Topic priorities', 'Sectional tests']:
-        mp.get_by_role('tab', name=tab).click(); mp.wait_for_timeout(150)
+        nav(mp, tab); mp.wait_for_timeout(150)
         sw = mp.evaluate('document.documentElement.scrollWidth')
         check(sw <= cw + 1, f'mobile {tab}: no horizontal scroll ({sw})')
-    mp.get_by_role('tab', name='Paper trends').click()
+    nav(mp, 'Paper trends')
     mp.screenshot(path=f'{SHOTS}/11-mobile-trends.png', full_page=True)
-    # DILR data sets on narrow phones: the table must scroll inside its card, not stretch the page
-    phone = lambda signed_in, w: context(b, signed_in=signed_in, **{**p.devices['iPhone 12'], 'viewport': {'width': w, 'height': 800}}).new_page()
+    # Narrow phones: nothing may be wider than the screen (tables scroll inside their card). These pages use a wide
+    # font on purpose (fallback fonts differ by OS; Linux's are wider), so a layout that only just fits fails everywhere.
+    WIDE_FONT = "document.addEventListener('DOMContentLoaded', () => { const s = document.createElement('style'); s.textContent = \"*{font-family: Verdana, 'DejaVu Sans', sans-serif !important}\"; document.head.appendChild(s); });"
+    def phone(signed_in, w):
+        ctx_ = context(b, signed_in=signed_in, **{**p.devices['iPhone 12'], 'viewport': {'width': w, 'height': 800}})
+        ctx_.add_init_script(WIDE_FONT)
+        return ctx_.new_page()
     wp = phone(False, 375); watch(wp)
     wp.goto(URL); wp.get_by_role('button', name='Start the warm-up').click(); wp.wait_for_selector('text=Question 1 of 3')
     for _ in range(2):
@@ -232,9 +266,11 @@ with sync_playwright() as p:
     check(wp.evaluate('innerWidth') == 375 and card_right <= 375, f'phone: warm-up DILR question fits the screen (card right {card_right:.0f} <= 375)')
     np_ = phone(True, 320); watch(np_)
     np_.goto(URL); np_.wait_for_selector('text=Your CAT sprint')
-    np_.get_by_role('tab', name='Question bank').click(); np_.get_by_role('tab', name=re.compile('DILR')).click()
+    nav(np_, 'Question bank'); np_.get_by_role('tab', name=re.compile('DILR')).click()
     np_.fill('#bank-search', 'D031'); np_.locator('ul.panel > li button').first.click(); np_.wait_for_timeout(300)
     check(np_.evaluate('innerWidth') == 320, f"320px phone: DILR set with table fits (layout width {np_.evaluate('innerWidth')})")
+    nav(np_, 'Paper trends'); np_.wait_for_timeout(300)
+    check(np_.evaluate('innerWidth') == 320, f"320px phone: Paper trends fits (layout width {np_.evaluate('innerWidth')})")
     # light explicit
     lp = context(b, viewport={'width': 1280, 'height': 900}, color_scheme='dark').new_page()
     lp.goto(URL); lp.wait_for_selector('text=Your CAT sprint'); lp.evaluate("document.documentElement.setAttribute('data-theme','light')"); lp.wait_for_timeout(100)

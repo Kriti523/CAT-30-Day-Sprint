@@ -65,7 +65,7 @@ export default function Tests() {
       <PageHead eyebrow="40 minutes per section · +3 / −1 · TITA has no negative" title="Sectional tests & in-app mock">
         Tests are built CAT-style from the bank and prefer questions you have not attempted: VARC = 4 passages + 8 VA (24 Qs), DILR = 4 sets (20 Qs), QA = 22 Qs in CAT proportions. Solutions stay hidden until you submit.
       </PageHead>
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         {SECTIONS.map((s) => (
           <Panel key={s}>
             <div className="flex items-center gap-2"><span className="dot" style={{ background: secVar(s) }} /><span className="label">{s} sectional</span></div>
