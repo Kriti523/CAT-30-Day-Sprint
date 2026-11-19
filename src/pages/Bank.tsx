@@ -65,7 +65,7 @@ export default function Bank() {
 
       <div className="panel mb-4 p-4">
         <div className="mb-3 text-sm text-muted">{SECTION_NAME[section]} · <span className="num">{agg.attempted}</span>/100 attempted · accuracy {pct(agg.accuracy)}</div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
           <label className="grid gap-1 lg:col-span-2"><span className="label">Search</span>
             <input id="bank-search" className="field" type="search" placeholder="Words, topic or ID (e.g. remainder, Q045, circular)" value={query} onChange={(e) => setQuery(e.target.value)} />
           </label>

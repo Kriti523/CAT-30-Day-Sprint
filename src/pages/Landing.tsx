@@ -365,7 +365,7 @@ export default function Landing() {
             <p className="display -mt-6 text-3xl font-bold leading-tight sm:text-5xl">You don't need more study material. You need a system.</p>
             <p className="mt-5 max-w-lg opacity-75">Preparing for CAT while working full-time isn't a content problem. It's a question of what to do tonight, in how long, and what to do again next week.</p>
           </div>
-          <dl className="grid content-center gap-6 sm:grid-cols-3 lg:grid-cols-1" data-reveal style={d(0.1)}>
+          <dl className="grid grid-cols-1 content-center gap-6 sm:grid-cols-3 lg:grid-cols-1" data-reveal style={d(0.1)}>
             {[['2 hrs', 'on weekdays'], ['4–5 hrs', 'on Saturdays and Sundays'], ['45 min', 'fallback when work wins']].map(([n, t]) => (
               <div key={t} className="border-l-4 pl-4" style={{ borderColor: 'var(--dilr)' }}>
                 <dt className="num text-3xl font-semibold">{n}</dt>

@@ -29,7 +29,7 @@ export default function Priorities() {
         Score = 10 × weighted rating: frequency {WEIGHTS.freq * 100}%, consistency {WEIGHTS.cons * 100}%, scoring potential {WEIGHTS.score * 100}%, foundational importance {WEIGHTS.found * 100}%, improvability in 30 days {WEIGHTS.improve * 100}%. Frequency and consistency come from the reconstructed counts; the other three are analyst judgements. Tap a topic to see its ratings.
       </PageHead>
 
-      <div className="mb-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
         {CLASSES.map((c) => (
           <div key={c} className="panel flex gap-3 p-3">
             <span style={{ width: 14, height: 14, borderRadius: 3, background: CLS_COLOR[c], marginTop: 3, flex: 'none' }} />
@@ -55,7 +55,7 @@ export default function Priorities() {
             const isOpen = open === t.topic;
             return (
               <li key={t.topic} className="rounded-lg" style={{ background: isOpen ? 'var(--sunk)' : undefined }}>
-                <button className="grid w-full items-center gap-x-4 gap-y-2 rounded-lg px-2 py-2.5 text-left sm:grid-cols-[1fr_minmax(8rem,40%)_3rem]" onClick={() => setOpen(isOpen ? null : t.topic)} aria-expanded={isOpen}>
+                <button className="grid grid-cols-1 w-full items-center gap-x-4 gap-y-2 rounded-lg px-2 py-2.5 text-left sm:grid-cols-[1fr_minmax(8rem,40%)_3rem]" onClick={() => setOpen(isOpen ? null : t.topic)} aria-expanded={isOpen}>
                   <span className="flex items-center gap-2"><span className="dot" style={{ background: secVar(t.section) }} /><span>{t.topic}</span><span className="text-xs text-muted">{t.section}</span></span>
                   <span className="flex items-center gap-2">
                     <span className="bar-track flex-1" style={{ height: 12 }} title={`${t.topic}: ${t.score} (${t.cls})`}><span className="bar-fill block" style={{ width: `${t.score}%`, background: CLS_COLOR[t.cls] }} /></span>
@@ -64,7 +64,7 @@ export default function Priorities() {
                   <span className="num text-right font-bold">{t.score}</span>
                 </button>
                 {isOpen && (
-                  <div className="grid gap-3 px-3 pb-3 md:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-3 px-3 pb-3 md:grid-cols-2">
                     <dl className="grid gap-1 text-sm">
                       {Object.entries(t.ratings).map(([k, v]) => (
                         <div key={k} className="grid grid-cols-[1fr_6rem_2rem] items-center gap-2">

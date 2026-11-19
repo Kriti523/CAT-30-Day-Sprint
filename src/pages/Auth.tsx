@@ -115,7 +115,7 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: Mo
         <a href="#" className="text-sm font-semibold" style={{ color: 'var(--accent)' }}>← Home</a>
         <ThemeToggle />
       </div>
-      <div className="grid w-full max-w-[880px] items-center gap-10 lg:grid-cols-[1fr_400px]">
+      <div className="grid grid-cols-1 w-full max-w-[880px] items-center gap-10 lg:grid-cols-[1fr_400px]">
         <div>
           <div className="display text-3xl font-bold leading-none sm:text-4xl">CAT Sprint</div>
           <p className="mt-3 max-w-[40ch] text-muted">A focused CAT plan. Sign in to pick up your practice, error log and progress where you left them, on any device.</p>

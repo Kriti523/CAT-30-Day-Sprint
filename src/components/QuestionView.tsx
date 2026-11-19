@@ -58,7 +58,7 @@ export function SetContext({ set, evidence = [] }: { set: QSet; evidence?: strin
     <div>
       <div className="mb-2 flex flex-wrap items-center gap-2">
         <SectionTag s={set.section} />
-        <span className="chip max-w-full whitespace-normal">{set.subtopic}</span>
+        <span className="chip max-w-full !whitespace-normal">{set.subtopic}</span>
         <span className="chip mono">{set.id}</span>
       </div>
       <h3 className="mb-3 text-xl font-bold">{set.title}</h3>
@@ -71,7 +71,7 @@ export function SetContext({ set, evidence = [] }: { set: QSet; evidence?: strin
         </figure>
       )}
       {set.chart && set.chart.type === 'pie' && (
-        <div className="my-4 grid gap-4 sm:grid-cols-2">
+        <div className="my-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
           {set.chart.series.map((s) => <Donut key={s.name} labels={set.chart!.labels} values={s.values} title={s.name} />)}
         </div>
       )}
@@ -102,7 +102,7 @@ export function QuestionTools({ q, wrong }: { q: Question; wrong: boolean }) {
         <button className="btn btn-sm" aria-pressed={!!state.bookmarks[q.id]} onClick={() => toggleBookmark(q.id)}>
           <span aria-hidden>{state.bookmarks[q.id] ? '★' : '☆'}</span>{state.bookmarks[q.id] ? 'Bookmarked' : 'Bookmark'}
         </button>
-        <div className="inline-flex items-center gap-1" role="radiogroup" aria-label="Confidence">
+        <div className="flex flex-wrap items-center gap-1" role="radiogroup" aria-label="Confidence">
           <span className="label mr-1">Confidence</span>
           {([1, 2, 3] as Confidence[]).map((c) => (
             <button key={c} role="radio" aria-checked={conf === c} className="btn btn-sm"
@@ -145,7 +145,7 @@ export function Solution({ q, given }: { q: Question; given?: string }) {
         <div className="label mb-1">Step-by-step solution</div>
         <ol className="list-decimal space-y-1 pl-5">{q.solution.map((s, i) => <li key={i}>{s}</li>)}</ol>
       </div>
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div><div className="label mb-0.5">Fast method</div><p>{q.fast}</p></div>
         <div><div className="label mb-0.5">Common mistake / trap</div><p>{q.trap}</p></div>
         <div className="sm:col-span-2"><div className="label mb-0.5">Revision note</div><p>{q.note}</p></div>
@@ -225,7 +225,7 @@ export function QuestionView({ q, onNext, onPrev, position }: { q: Question; onN
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <SectionTag s={q.section} />
         <span className="chip mono">{q.id}</span>
-        <span className="chip max-w-full whitespace-normal">{q.topic} · {q.subtopic}</span>
+        <span className="chip max-w-full !whitespace-normal">{q.topic} · {q.subtopic}</span>
         <DiffTag d={q.difficulty} />
         <span className="chip">{q.type}</span>
         <span className="chip num" title="Estimated solving time">~{fmtTime(q.time)}</span>

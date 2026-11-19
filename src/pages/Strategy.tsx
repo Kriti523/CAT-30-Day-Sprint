@@ -23,7 +23,7 @@ export default function Strategy() {
         <div className="mt-3"><Note tone="warn">{TARGETS.note}</Note></div>
       </Panel>
 
-      <div className="mb-6 grid gap-4 lg:grid-cols-3">
+      <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
         {SECTION_PLANS.map((s) => (
           <Panel key={s.section} title={<span className="inline-flex items-center gap-2"><span className="dot" style={{ background: secVar(s.section as Section) }} />{s.section} plan</span>}>
             <ol className="grid list-decimal gap-2 pl-5 text-[0.95rem]">{s.points.map((p) => <li key={p}>{p}</li>)}</ol>
@@ -31,7 +31,7 @@ export default function Strategy() {
         ))}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Panel title="Rules that shape strategy"><ul className="grid list-disc gap-2 pl-5 text-[0.95rem]">{RULES.map((r) => <li key={r}>{r}</li>)}</ul></Panel>
         <Panel title="Exam-day checklist"><ul className="grid gap-2 text-[0.95rem]">{EXAM_DAY.map((r, i) => <li key={r} className="flex gap-2"><input id={`exam-${i}`} type="checkbox" className="mt-1.5" aria-label={r} /><span>{r}</span></li>)}</ul>
           <p className="mt-3 text-xs text-muted">Always follow the instructions printed on your admit card and on iimcat.ac.in; they override anything here.</p></Panel>

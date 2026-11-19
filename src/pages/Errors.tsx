@@ -24,7 +24,7 @@ export default function Errors() {
         A question leaves the queue when you answer it correctly. Low-confidence questions (rated “Low”) are queued too. Tag every miss with a reason — the pattern tells you what to fix.
       </PageHead>
 
-      <div className="grid gap-4 md:grid-cols-[1fr_2fr]">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-[1fr_2fr]">
         <Panel title="Why you miss questions">
           <ul className="grid gap-3.5 text-sm">
             {reasonCounts.map(({ r, n }) => (
@@ -55,7 +55,7 @@ export default function Errors() {
                     </div>
                     <p className="mt-1 line-clamp-2 text-sm">{q.text.split('\n')[0]}</p>
                     <p className="mt-1 text-xs text-muted"><span className="label">Rule · </span>{q.note}</p>
-                    <div className="mt-2 grid gap-2 sm:grid-cols-[auto_1fr_auto]">
+                    <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-[auto_1fr_auto]">
                       <select id={`er-${id}`} className="field" value={e.reason ?? ''} onChange={(ev) => setErrorReason(id, ev.target.value as never)} aria-label="Reason">
                         <option value="">Reason…</option>{ERROR_REASONS.map((r) => <option key={r}>{r}</option>)}
                       </select>

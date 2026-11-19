@@ -88,7 +88,7 @@ Open http://localhost:5173. Keep it running while you test, because email confir
 | C1 | Log out → correct email, **wrong** password | Red *"Wrong email or password."* |
 | C2 | An email that was never registered | Same: *"Wrong email or password."* |
 | C3 | Click **Show** / **Hide** next to Password | Password text is shown / hidden |
-| C4 | Correct email and password → **Log in** | Dashboard opens; sidebar shows **Signed in** and the email |
+| C4 | Correct email and password → **Log in** | Dashboard opens; **☰ Menu** shows **Signed in** and the email |
 | C5 | Log out, type email and password, press **Enter** | Same as C4 |
 | C6 | Watch the button while logging in | It reads *"Please wait…"* and can't be clicked twice |
 
@@ -98,8 +98,10 @@ Open http://localhost:5173. Keep it running while you test, because email confir
 |---|---|---|
 | D1 | Logged in → reload | Brief *"Loading…"*, then the app, without the login screen |
 | D2 | Close the tab, open http://localhost:5173 again | Still logged in |
-| D3 | Desktop: sidebar → **Log out** | The home page; the `sb-…-auth-token` key is gone |
-| D4 | Phone width (DevTools → device toolbar, e.g. iPhone 12) → header → **Log out** | Same as D3 |
+| D3 | Desktop: **☰ Menu** → **Log out** | The home page; the `sb-…-auth-token` key is gone |
+| D4 | Phone width (DevTools → device toolbar, e.g. iPhone 12) → **☰** → **Log out** | Same as D3 |
+| D6 | Desktop: **☰ Menu** opens the menu beside the page; reload; then **✕ Menu** | It stays open after the reload, and collapses again; the page uses the full width when collapsed |
+| D7 | Phone: **☰** → the menu slides in; tap outside it, or press Esc; open it again and pick a page | It closes each time, and the chosen page opens |
 | D5 | After logging out, press the browser's **Back** button | Still signed out (home or login screen), no app pages |
 
 ### E. Separate progress per account
@@ -158,7 +160,7 @@ Open http://localhost:5173. Keep it running while you test, because email confir
 
 | # | Steps | Expected |
 |---|---|---|
-| J1 | Click ☀ / 🖥 / ☾ (home page nav, login screen, app sidebar or mobile header) | Light, match-device and dark apply immediately everywhere, including the dot colours |
+| J1 | Click ☀ / 🖥 / ☾ (home page nav, login screen, the app's top bar, or ☰ menu on phones) | Light, match-device and dark apply immediately everywhere, including the dot colours |
 | J2 | Pick Dark, reload, then open the privacy page | Still dark, with no white flash while loading |
 | J3 | Pick "match device", then change the OS theme | The site follows the OS |
 
@@ -166,7 +168,7 @@ Open http://localhost:5173. Keep it running while you test, because email confir
 
 | # | Steps | Expected |
 |---|---|---|
-| K1 | Log in on a laptop, answer two questions, wait 2 seconds | Sidebar shows **● Synced** |
+| K1 | Log in on a laptop, answer two questions, wait 2 seconds | The top bar shows **● Synced** |
 | K2 | Log in to the same account on your phone | The two attempts are there |
 | K3 | Bookmark a question on the phone, then switch back to the laptop tab | Within a moment of the tab coming back into view, the bookmark appears |
 | K4 | Laptop: DevTools → Network → **Offline**, answer a question | Badge shows **Offline**; the answer is kept |

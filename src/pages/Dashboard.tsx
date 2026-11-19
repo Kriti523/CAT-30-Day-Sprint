@@ -38,7 +38,7 @@ export default function Dashboard() {
         Built for 2 hours on weekdays, 4 on Saturdays and 5 on Sundays, with a 45-minute fallback for busy days.
       </PageHead>
 
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <Panel className="md:col-span-1">
           <div className="label">All sections</div>
           <div className="mt-1 display text-4xl font-bold num">{total.attempted}<span className="text-lg text-muted">/300</span></div>
@@ -62,7 +62,7 @@ export default function Dashboard() {
         })}
       </div>
 
-      <div className="mt-6 grid gap-4 lg:grid-cols-[1.6fr_1fr]">
+      <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-[1.6fr_1fr]">
         <div>
           <div className="label mb-2">{dayIdx >= 1 && dayIdx <= 30 ? 'Today' : dayIdx < 1 ? 'Day 1 preview' : 'Final day'}</div>
           <PlanDayCard d={today} compact />
@@ -109,7 +109,7 @@ export default function Dashboard() {
           ))}
         </div>}>
         <p className="mb-3 text-sm text-muted">Bar = share of the topic attempted · number = accuracy. Tap a topic to open it in the bank.</p>
-        <ul className="grid gap-x-10 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="grid grid-cols-1 gap-x-10 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
           {bySubtopic(state, mSec).map((t) => (
             <li key={t.subtopic}>
               <div className="mb-1.5 flex items-baseline justify-between gap-3 text-sm">

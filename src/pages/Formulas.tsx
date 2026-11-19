@@ -21,13 +21,13 @@ export default function Formulas() {
           <section key={s.id} className="panel p-4 sm:p-6">
             <div className="mb-3 flex items-center gap-2"><span className="dot" style={{ background: secVar(s.section) }} /><span className="label">{s.section}</span></div>
             <h2 className="mb-4 text-2xl font-bold">{s.title}</h2>
-            <div className="grid gap-x-8 gap-y-5 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-x-8 gap-y-5 md:grid-cols-2">
               {s.groups.map((g) => (
                 <div key={g.name} style={{ breakInside: 'avoid' }}>
                   <h3 className="mb-1.5 font-bold">{g.name}</h3>
                   <dl className="grid gap-1.5">
                     {g.items.map(([k, v]) => (
-                      <div key={k} className="grid gap-x-3 border-b pb-1.5 text-[0.95rem] sm:grid-cols-[10rem_1fr]" style={{ borderColor: 'var(--line)' }}>
+                      <div key={k} className="grid grid-cols-1 gap-x-3 border-b pb-1.5 text-[0.95rem] sm:grid-cols-[10rem_1fr]" style={{ borderColor: 'var(--line)' }}>
                         <dt className="font-semibold">{k}</dt><dd className="mono text-[0.88rem]">{v}</dd>
                       </div>
                     ))}
